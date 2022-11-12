@@ -1,2 +1,2 @@
-# yw2klp
-yw7 to kalliope file converter
+# yw2novx
+yw7 to novx file converter

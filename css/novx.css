@@ -1,0 +1,54 @@
+project {display: block;
+	padding: 4em; border-width: 4em;
+	border-color: gray;
+	border-style: solid;}
+name {text-align: center;
+	display: block;
+	font-size: 1.5em;}
+bio {font-style: italic;}
+
+book {display: block;
+	padding: 4em;
+	border-width: 4em;
+	border-color: gray;
+	border-style: solid;}
+world {display: block;
+	padding: 4em;
+	border-width: 4em;
+	border-color: navy;
+	border-style: solid;}
+
+title {margin: 1.5em;
+	text-align: center;
+	display: block;
+	font-size: 1.2em;
+	font-weight: bold;
+	font-family: sans-serif;}
+book > title {font-size: 2.5em;}
+part > title {font-size: 2em;}
+chapter > title {font-size: 1.8em;}
+
+desc {display: block;
+	margin-right: 8em;
+	margin-left: 8em;
+	margin-top: 1em;
+	margin-bottom: 1em;
+	font-family: sans-serif;}
+
+part[type="1"] {color:blue;}
+part[type="2"] {color:red;}
+part[type="3"] {color:gray;}
+chapter[type="1"] {color:blue;}
+chapter[type="2"] {color:red;}
+chapter[type="3"] {color:gray;}
+section[type="1"] {color:blue;}
+section[type="2"] {color:red;}
+section[type="3"] {color:gray;}
+
+content {display: block;
+	padding: 1em;}
+
+p {display: block;}
+p+p {text-indent: 1em;}
+em {font-style: italic;}
+strong {text-transform: uppercase;}
