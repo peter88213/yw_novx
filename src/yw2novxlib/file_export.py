@@ -12,11 +12,11 @@ from string import Template
 from pywriter.pywriter_globals import *
 from pywriter.model.character import Character
 from pywriter.model.scene import Scene
-from pywriter.model.novel import Novel
+from pywriter.model.novel import File
 from pywriter.file.filter import Filter
 
 
-class FileExport(Novel):
+class FileExport(File):
     """Abstract yWriter project file exporter representation.
     
     Public methods:
@@ -77,7 +77,7 @@ class FileExport(Novel):
         """Initialize filter strategy class instances.
         
         Positional arguments:
-            filePath -- str: path to the file represented by the Novel instance.
+            filePath -- str: path to the file represented by the File instance.
             
         Optional arguments:
             kwargs -- keyword arguments to be used by subclasses.            
@@ -95,7 +95,7 @@ class FileExport(Novel):
         """Update instance variables from a source instance.
         
         Positional arguments:
-            source -- Novel subclass instance to merge.
+            source -- File subclass instance to merge.
         
         Overrides the superclass method.
         """
