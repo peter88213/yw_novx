@@ -3,8 +3,7 @@
 	<name>yw2novx</name>
 	<comment></comment>
 	<projects>
-		<project>kalliope</project>
-		<project>PyWriter</project>
+		<project>novxlib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

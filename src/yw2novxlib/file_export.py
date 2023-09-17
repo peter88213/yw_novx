@@ -9,11 +9,11 @@ Published under the MIT License (https://opensource.org/licenses/mit-license.php
 import os
 import re
 from string import Template
-from pywriter.pywriter_globals import *
-from pywriter.model.character import Character
-from pywriter.model.scene import Scene
-from pywriter.model.novel import File
-from pywriter.file.filter import Filter
+from novxlib.novx_globals import *
+from novxlib.model.character import Character
+from novxlib.model.scene import Scene
+from novxlib.model.novel import File
+from novxlib.file.filter import Filter
 
 
 class FileExport(File):

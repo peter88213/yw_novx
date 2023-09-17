@@ -1,9 +1,9 @@
 """ Build a python script for the yw2novx distribution.
         
 In order to distribute a single script without dependencies, 
-this script "inlines" all modules imported from the pywriter package.
+this script "inlines" all modules imported from the novxlib package.
 
-The PyWriter project (see see https://github.com/peter88213/PyWriter)
+The novxlib project (see see https://github.com/peter88213/novxlib)
 must be located on the same directory level as the yw2novx project. 
 
 For further information see https://github.com/peter88213/yw2novx
@@ -18,10 +18,10 @@ TARGET_FILE = f'{BUILD}yw2novx.pyw'
 
 
 def main():
-    inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novxlib', '../src/', copyPyWriter=False)
-    inliner.run(TARGET_FILE, TARGET_FILE, 'pywriter', '../../PyWriter/src/', copyPyWriter=False)
+    inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novxlib', '../src/', copynovxlib=False)
+    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/', copynovxlib=False)
     # inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novxlib', '../src/')
-    # inliner.run(TARGET_FILE, TARGET_FILE, 'pywriter', '../src/')
+    # inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../src/')
     print('Done.')
 
 

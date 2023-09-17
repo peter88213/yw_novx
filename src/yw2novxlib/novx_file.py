@@ -5,7 +5,7 @@ For further information see https://github.com/peter88213/yw2novx
 Published under the MIT License (https://opensource.org/licenses/mit-license.php)
 """
 import re
-from pywriter.pywriter_globals import *
+from novxlib.novx_globals import *
 from yw2novxlib.file_export import FileExport
 
 

@@ -4,8 +4,8 @@ Copyright (c) 2022 Peter Triesberger
 For further information see https://github.com/peter88213/yw2novx
 Published under the MIT License (https://opensource.org/licenses/mit-license.php)
 """
-from pywriter.converter.yw_cnv_ff import YwCnvFf
-from pywriter.yw.yw7_file import Yw7File
+from novxlib.converter.yw_cnv_ff import YwCnvFf
+from novxlib.yw.yw7_file import Yw7File
 from yw2novxlib.novx_file import NovxFile
 
 

@@ -1,6 +1,6 @@
 """Convert yWriter chapters and scenes to odt format.
 
-This is a PyWriter sample application.
+This is a novxlib sample application.
 
 Copyright (c) 2022 Peter Triesberger
 For further information see https://github.com/peter88213/yw2novx
@@ -10,8 +10,8 @@ SUFFIX = ''
 
 import sys
 
-from pywriter.ui.ui_cmd import UiCmd
-from pywriter.ui.ui_tk import UiTk
+from novxlib.ui.ui_cmd import UiCmd
+from novxlib.ui.ui_tk import UiTk
 from yw2novxlib.yw7_exporter import Yw7Exporter
 
 
