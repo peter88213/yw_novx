@@ -18,10 +18,7 @@ TARGET_FILE = f'{BUILD}yw2novx.pyw'
 
 
 def main():
-    inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novxlib', '../src/', copynovxlib=False)
-    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/', copynovxlib=False)
-    # inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novxlib', '../src/')
-    # inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../src/')
+    inliner.run(SOURCE_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
     print('Done.')
 
 
