@@ -26,6 +26,7 @@ def main(sourcePath):
     source.novel = Novel()
     source.read()
     target.novel = source.novel
+    target.wcLog = source.wcLog
     target.write()
     print('Done')
 
