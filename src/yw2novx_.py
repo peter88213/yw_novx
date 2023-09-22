@@ -9,7 +9,7 @@ SUFFIX = ''
 import sys
 import os
 
-from pywriter.yw.novelyst_file import NovelystFile
+from pywriter.yw.yw7_reader import Yw7Reader
 from pywriter.novx.novx_file import NovxFile
 from pywriter.model.novel import Novel
 
@@ -21,7 +21,7 @@ def main(sourcePath):
         return
 
     targetPath = f'{path}.novx'
-    source = NovelystFile(sourcePath)
+    source = Yw7Reader(sourcePath)
     target = NovxFile(targetPath)
     source.novel = Novel()
     source.read()
