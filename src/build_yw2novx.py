@@ -7,7 +7,7 @@ The pywriter project (see see https://github.com/peter88213/novxlib)
 must be located on the same directory level as the yw2novx project. 
 
 For further information see https://github.com/peter88213/yw2novx
-Published under the MIT License (https://opensource.org/licenses/mit-license.php)
+License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 import sys
 sys.path.append('../../novxlib/src')
