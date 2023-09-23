@@ -3,14 +3,14 @@
 In order to distribute a single script without dependencies, 
 this script "inlines" all modules imported from the pywriter package.
 
-The pywriter project (see see https://github.com/peter88213/PyWriter)
+The pywriter project (see see https://github.com/peter88213/novxlib)
 must be located on the same directory level as the yw2novx project. 
 
 For further information see https://github.com/peter88213/yw2novx
 Published under the MIT License (https://opensource.org/licenses/mit-license.php)
 """
 import sys
-sys.path.append('../../PyWriter/src')
+sys.path.append('../../novxlib/src')
 import inliner
 
 SRC = '../src/'

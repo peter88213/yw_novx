@@ -9,9 +9,9 @@ SUFFIX = ''
 import sys
 import os
 
-from pywriter.yw.yw7_reader import Yw7Reader
-from pywriter.novx.novx_file import NovxFile
-from pywriter.model.novel import Novel
+from novxlib.yw.yw7_reader import Yw7Reader
+from novxlib.novx.novx_file import NovxFile
+from novxlib.model.novel import Novel
 
 
 def main(sourcePath):
