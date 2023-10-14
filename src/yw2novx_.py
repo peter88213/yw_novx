@@ -12,6 +12,7 @@ import os
 from novxlib.yw.yw7_reader import Yw7Reader
 from novxlib.novx.novx_file import NovxFile
 from novxlib.model.novel import Novel
+from novxlib.model.nv_tree import NvTree
 
 
 def main(sourcePath):
@@ -23,7 +24,7 @@ def main(sourcePath):
     targetPath = f'{path}.novx'
     source = Yw7Reader(sourcePath)
     target = NovxFile(targetPath)
-    source.novel = Novel()
+    source.novel = Novel(tree=NvTree())
     source.read()
     target.novel = source.novel
     target.wcLog = source.wcLog
