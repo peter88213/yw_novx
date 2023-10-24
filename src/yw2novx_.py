@@ -9,7 +9,7 @@ SUFFIX = ''
 import sys
 import os
 
-from novxlib.yw.yw7_reader import Yw7Reader
+from novxlib.yw.yw7_file import Yw7File
 from novxlib.novx.novx_file import NovxFile
 from novxlib.model.novel import Novel
 from novxlib.model.nv_tree import NvTree
@@ -22,7 +22,7 @@ def main(sourcePath):
         return
 
     targetPath = f'{path}.novx'
-    source = Yw7Reader(sourcePath)
+    source = Yw7File(sourcePath)
     target = NovxFile(targetPath)
     source.novel = Novel(tree=NvTree())
     source.read()
