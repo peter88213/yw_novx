@@ -1,7 +1,3 @@
-/src/plugin/
-/src/locale/
 /test/work/
-/test/yw2novx.py
-/build/
 *.pyc
 *.bak

@@ -15,12 +15,13 @@ import inliner
 
 SRC = '../src/'
 BUILD = '../build/'
-SOURCE_FILE = f'{SRC}yw2novx_.py'
-TARGET_FILE = f'{BUILD}yw2novx.py'
+SOURCE_FILE = f'{SRC}upgrade_collection_.py'
+TARGET_FILE = f'{BUILD}upgrade_collection.py'
 
 
 def main():
-    inliner.run(SOURCE_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
+    inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novx_', './')
+    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
     print('Done.')
 
 

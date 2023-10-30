@@ -3,6 +3,7 @@
 	<name>yw2novx</name>
 	<comment></comment>
 	<projects>
+		<project>novelyst_collection</project>
 		<project>novxlib</project>
 	</projects>
 	<buildSpec>

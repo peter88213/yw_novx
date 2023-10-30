@@ -15,11 +15,10 @@ from novxlib.model.novel import Novel
 from novxlib.model.nv_tree import NvTree
 
 
-def main(sourcePath):
+def yw2novx(sourcePath):
     path, extension = os.path.splitext(sourcePath)
     if extension != '.yw7':
-        print(f'Error: File must be .yw7 type, but is "{extension}".')
-        return
+        raise ValueError(f'File must be .yw7 type, but is "{extension}".')
 
     targetPath = f'{path}.novx'
     source = Yw7File(sourcePath)
@@ -29,8 +28,9 @@ def main(sourcePath):
     target.novel = source.novel
     target.wcLog = source.wcLog
     target.write()
-    print('Done')
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    yw2novx(sys.argv[1])
+    print('Done')
+
