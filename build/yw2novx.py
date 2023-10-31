@@ -37,6 +37,25 @@ __all__ = [
     'CR_ROOT',
     'LC_ROOT',
     'IT_ROOT',
+    'BRF_SYNOPSIS_SUFFIX',
+    'CHAPTERS_SUFFIX',
+    'CHARACTERS_SUFFIX',
+    'CHARLIST_SUFFIX',
+    'DATA_SUFFIX',
+    'ITEMLIST_SUFFIX',
+    'ITEMS_SUFFIX',
+    'LOCATIONS_SUFFIX',
+    'LOCLIST_SUFFIX',
+    'MANUSCRIPT_SUFFIX',
+    'NOTES_SUFFIX',
+    'PARTS_SUFFIX',
+    'PLOTLIST_SUFFIX',
+    'PLOT_SUFFIX',
+    'PROOF_SUFFIX',
+    'SECTIONLIST_SUFFIX',
+    'SECTIONS_SUFFIX',
+    'TODO_SUFFIX',
+    'XREF_SUFFIX',
     ]
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
@@ -51,6 +70,26 @@ AC_ROOT = f'{ROOT_PREFIX}{ARC_PREFIX}'
 CR_ROOT = f'{ROOT_PREFIX}{CHARACTER_PREFIX}'
 LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
 IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
+
+BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
+CHAPTERS_SUFFIX = '_tmp_chapters'
+CHARACTERS_SUFFIX = '_tmp_characters'
+CHARLIST_SUFFIX = '_tmp_charlist'
+DATA_SUFFIX = '_data'
+ITEMLIST_SUFFIX = '_tmp_itemlist'
+ITEMS_SUFFIX = '_tmp_items'
+LOCATIONS_SUFFIX = '_tmp_locations'
+LOCLIST_SUFFIX = '_tmp_loclist'
+MANUSCRIPT_SUFFIX = '_tmp_manuscript'
+NOTES_SUFFIX = '_tmp_notes'
+PARTS_SUFFIX = '_tmp_parts'
+PLOTLIST_SUFFIX = '_plotlist'
+PLOT_SUFFIX = '_plot'
+PROOF_SUFFIX = '_tmp_proof'
+SECTIONLIST_SUFFIX = '_tmp_sectionlist'
+SECTIONS_SUFFIX = '_tmp_sections'
+TODO_SUFFIX = '_tmp_todo'
+XREF_SUFFIX = '_xref'
 
 
 class Error(Exception):
