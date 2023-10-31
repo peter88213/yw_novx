@@ -28,7 +28,7 @@ __all__ = [
     'ARC_PREFIX',
     'ARC_POINT_PREFIX',
     'CHAPTER_PREFIX',
-    'SCENE_PREFIX',
+    'SECTION_PREFIX',
     'CHARACTER_PREFIX',
     'LOCATION_PREFIX',
     'ITEM_PREFIX',
@@ -41,7 +41,7 @@ __all__ = [
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
 ARC_PREFIX = 'ac'
-SCENE_PREFIX = 'sc'
+SECTION_PREFIX = 'sc'
 ARC_POINT_PREFIX = 'ap'
 CHARACTER_PREFIX = 'cr'
 LOCATION_PREFIX = 'lc'
@@ -193,8 +193,8 @@ class Novel(BasicElement):
         self._customChrGoals = customChrGoals
 
         self.chapters = {}
-        self.scenes = {}
-        self.arcPoints = {}
+        self.sections = {}
+        self.turningPoints = {}
         self.languages = None
         self.arcs = {}
         self.locations = {}
@@ -414,16 +414,16 @@ class Novel(BasicElement):
             self._customChrGoals = newVal
             self.on_element_change()
 
-    def update_scene_arcs(self):
-        for scId in self.scenes:
-            self.scenes[scId].scArcPoints = {}
-            self.scenes[scId].scArcs = []
+    def update_section_arcs(self):
+        for scId in self.sections:
+            self.sections[scId].scTurningPoints = {}
+            self.sections[scId].scArcs = []
             for acId in self.arcs:
-                if scId in self.arcs[acId].scenes:
-                    self.scenes[scId].scArcs.append(acId)
-                    for apId in self.tree.get_children(acId):
-                        if self.arcPoints[apId].sceneAssoc == scId:
-                            self.scenes[scId].scArcPoints[apId] = acId
+                if scId in self.arcs[acId].sections:
+                    self.sections[scId].scArcs.append(acId)
+                    for tpId in self.tree.get_children(acId):
+                        if self.turningPoints[tpId].sectionAssoc == scId:
+                            self.sections[scId].scTurningPoints[tpId] = acId
                             break
 
     def get_languages(self):
@@ -437,8 +437,8 @@ class Novel(BasicElement):
                     m = LANGUAGE_TAG.search(text)
 
         self.languages = []
-        for scId in self.scenes:
-            text = self.scenes[scId].sceneContent
+        for scId in self.sections:
+            text = self.sections[scId].sectionContent
             if text:
                 for language in languages(text):
                     if not language in self.languages:
@@ -489,7 +489,7 @@ class File(ABC):
         self._filePath = None
         self.projectName = None
         self.projectPath = None
-        self.scenesSplit = False
+        self.sectionsSplit = False
         self.filePath = filePath
 
     @property
@@ -537,7 +537,7 @@ class Arc(BasicElement):
 
         self._shortName = shortName
 
-        self._scenes = None
+        self._sections = None
 
     @property
     def shortName(self):
@@ -550,40 +550,40 @@ class Arc(BasicElement):
             self.on_element_change()
 
     @property
-    def scenes(self):
+    def sections(self):
         try:
-            return self._scenes[:]
+            return self._sections[:]
         except TypeError:
             return None
 
-    @scenes.setter
-    def scenes(self, newVal):
-        if self._scenes != newVal:
-            self._scenes = newVal
+    @sections.setter
+    def sections(self, newVal):
+        if self._sections != newVal:
+            self._sections = newVal
             self.on_element_change()
 
 
 
-class ArcPoint(BasicElement):
+class TurningPoint(BasicElement):
 
     def __init__(self,
-            sceneAssoc=None,
+            sectionAssoc=None,
             notes=None,
             **kwargs):
         super().__init__(**kwargs)
 
-        self._sceneAssoc = sceneAssoc
+        self._sectionAssoc = sectionAssoc
 
         self._notes = notes
 
     @property
-    def sceneAssoc(self):
-        return self._sceneAssoc
+    def sectionAssoc(self):
+        return self._sectionAssoc
 
-    @sceneAssoc.setter
-    def sceneAssoc(self, newVal):
-        if self._sceneAssoc != newVal:
-            self._sceneAssoc = newVal
+    @sectionAssoc.setter
+    def sectionAssoc(self, newVal):
+        if self._sectionAssoc != newVal:
+            self._sectionAssoc = newVal
             self.on_element_change()
 
     @property
@@ -779,7 +779,7 @@ ADDITIONAL_WORD_LIMITS = re.compile('--|—|–')
 NO_WORD_LIMITS = re.compile('\[.+?\]|\/\*.+?\*\/|-|^\>', re.MULTILINE)
 
 
-class Scene(BasicElement):
+class Section(BasicElement):
     PACING = ['A', 'R', 'C']
 
     NULL_DATE = '0001-01-01'
@@ -805,7 +805,7 @@ class Scene(BasicElement):
             stageLevel=None,
             **kwargs):
         super().__init__(**kwargs)
-        self._sceneContent = None
+        self._sectionContent = None
         self.wordCount = 0
         self._scType = scType
         self._scPacing = scPacing
@@ -830,15 +830,15 @@ class Scene(BasicElement):
         self._items = None
 
         self.scArcs = []
-        self.scArcPoints = {}
+        self.scTurningPoints = {}
 
     @property
-    def sceneContent(self):
-        return self._sceneContent
+    def sectionContent(self):
+        return self._sectionContent
 
-    @sceneContent.setter
-    def sceneContent(self, text):
-        self._sceneContent = text
+    @sectionContent.setter
+    def sectionContent(self, text):
+        self._sectionContent = text
         text = ADDITIONAL_WORD_LIMITS.sub(' ', text)
         text = NO_WORD_LIMITS.sub('', text)
         wordList = text.split()
@@ -1181,15 +1181,15 @@ class Yw7File(File):
                 wcTotalCount = xmlWc.find('TotalCount').text
                 self.wcLog[wcDate] = [wcCount, wcTotalCount]
 
-        for scId in self.novel.scenes:
-            if self.novel.scenes[scId].characters is None:
-                self.novel.scenes[scId].characters = []
-            if self.novel.scenes[scId].locations is None:
-                self.novel.scenes[scId].locations = []
-            if self.novel.scenes[scId].items is None:
-                self.novel.scenes[scId].items = []
-            if self.novel.scenes[scId].status is None:
-                self.novel.scenes[scId].status = 1
+        for scId in self.novel.sections:
+            if self.novel.sections[scId].characters is None:
+                self.novel.sections[scId].characters = []
+            if self.novel.sections[scId].locations is None:
+                self.novel.sections[scId].locations = []
+            if self.novel.sections[scId].items is None:
+                self.novel.sections[scId].items = []
+            if self.novel.sections[scId].status is None:
+                self.novel.sections[scId].status = 1
 
         self.novel.check_locale()
 
@@ -1217,7 +1217,7 @@ class Yw7File(File):
                 index += 1
             return index
 
-        def build_scene_subtree(xmlScene, prjScn, arcPoint=False):
+        def build_scene_subtree(xmlScene, prjScn, turningPoint=False):
             i = 1
             i = set_element(xmlScene, 'Title', prjScn.title, i)
             if prjScn.desc is not None:
@@ -1230,7 +1230,7 @@ class Yw7File(File):
                 (True, '2'),
                 (True, '0'),
                 )
-            if arcPoint:
+            if turningPoint:
                 scType = 2
             elif prjScn.scType is None:
                 scType = 0
@@ -1241,16 +1241,16 @@ class Yw7File(File):
                 ET.SubElement(xmlScene, 'Unused').text = '-1'
             if ySceneType is not None:
                 ET.SubElement(xmlSceneFields[scId], 'Field_SceneType').text = ySceneType
-            if arcPoint:
+            if turningPoint:
                 ET.SubElement(xmlScene, 'Status').text = '1'
             elif prjScn.status is not None:
                 ET.SubElement(xmlScene, 'Status').text = str(prjScn.status)
 
-            if arcPoint:
+            if turningPoint:
                 ET.SubElement(xmlScene, 'SceneContent')
                 return
 
-            ET.SubElement(xmlScene, 'SceneContent').text = prjScn.sceneContent
+            ET.SubElement(xmlScene, 'SceneContent').text = prjScn.sectionContent
             if prjScn.scMode:
                 ET.SubElement(xmlSceneFields[scId], 'Field_SceneMode').text = str(prjScn.scMode)
             if prjScn.notes:
@@ -1484,22 +1484,22 @@ class Yw7File(File):
                                     '0')
 
         xmlSceneFields = {}
-        scIds = list(self.novel.scenes)
+        scIds = list(self.novel.sections)
         for scId in scIds:
             xmlScene = ET.SubElement(xmlScenes, 'SCENE')
             ET.SubElement(xmlScene, 'ID').text = scId[2:]
             xmlSceneFields[scId] = ET.SubElement(xmlScene, 'Fields')
-            build_scene_subtree(xmlScene, self.novel.scenes[scId])
+            build_scene_subtree(xmlScene, self.novel.sections[scId])
 
         newScIds = {}
-        for apId in self.novel.arcPoints:
-            scId = create_id(scIds, prefix=SCENE_PREFIX)
+        for tpId in self.novel.turningPoints:
+            scId = create_id(scIds, prefix=SECTION_PREFIX)
             scIds.append(scId)
-            newScIds[apId] = scId
+            newScIds[tpId] = scId
             xmlScene = ET.SubElement(xmlScenes, 'SCENE')
             ET.SubElement(xmlScene, 'ID').text = scId[2:]
             xmlSceneFields[scId] = ET.SubElement(xmlScene, 'Fields')
-            build_scene_subtree(xmlScene, self.novel.arcPoints[apId], arcPoint=True)
+            build_scene_subtree(xmlScene, self.novel.turningPoints[tpId], turningPoint=True)
 
         chIds = list(self.novel.tree.get_children(CH_ROOT))
         for chId in chIds:
@@ -1527,27 +1527,27 @@ class Yw7File(File):
             srtScenes = self.novel.tree.get_children(acId)
             if srtScenes:
                 xmlScnList = ET.SubElement(xmlChapter, 'Scenes')
-                for apId in srtScenes:
-                    ET.SubElement(xmlScnList, 'ScID').text = newScIds[apId][2:]
+                for tpId in srtScenes:
+                    ET.SubElement(xmlScnList, 'ScID').text = newScIds[tpId][2:]
 
-        sceneArcs = {}
-        sceneAssoc = {}
+        sectionArcs = {}
+        sectionAssoc = {}
         for scId in scIds:
-            sceneArcs[scId] = []
-            sceneAssoc[scId] = []
+            sectionArcs[scId] = []
+            sectionAssoc[scId] = []
         for acId in self.novel.arcs:
-            for scId in self.novel.arcs[acId].scenes:
-                sceneArcs[scId].append(self.novel.arcs[acId].shortName)
-            for apId in self.novel.tree.get_children(acId):
-                sceneArcs[newScIds[apId]].append(self.novel.arcs[acId].shortName)
-        for apId in self.novel.arcPoints:
-            if self.novel.arcPoints[apId].sceneAssoc:
-                sceneAssoc[self.novel.arcPoints[apId].sceneAssoc].append(newScIds[apId][2:])
-                sceneAssoc[newScIds[apId]].append(self.novel.arcPoints[apId].sceneAssoc[2:])
+            for scId in self.novel.arcs[acId].sections:
+                sectionArcs[scId].append(self.novel.arcs[acId].shortName)
+            for tpId in self.novel.tree.get_children(acId):
+                sectionArcs[newScIds[tpId]].append(self.novel.arcs[acId].shortName)
+        for tpId in self.novel.turningPoints:
+            if self.novel.turningPoints[tpId].sectionAssoc:
+                sectionAssoc[self.novel.turningPoints[tpId].sectionAssoc].append(newScIds[tpId][2:])
+                sectionAssoc[newScIds[tpId]].append(self.novel.turningPoints[tpId].sectionAssoc[2:])
         for scId in scIds:
             fields = {
-                'Field_SceneArcs': list_to_string(sceneArcs[scId]),
-                'Field_SceneAssoc': list_to_string(sceneAssoc[scId]),
+                'Field_SceneArcs': list_to_string(sectionArcs[scId]),
+                'Field_SceneAssoc': list_to_string(sectionAssoc[scId]),
                 }
             for field in fields:
                 if fields[field]:
@@ -1720,7 +1720,7 @@ class Yw7File(File):
                 self.novel.chapters[chId] = prjChapter
                 self.novel.tree.append(CH_ROOT, chId)
                 for scId in scenes:
-                    self.novel.tree.append(chId, f'{SCENE_PREFIX}{scId}')
+                    self.novel.tree.append(chId, f'{SECTION_PREFIX}{scId}')
 
     def _read_characters(self, root):
         self.novel.tree.delete_children(CR_ROOT)
@@ -1822,13 +1822,13 @@ class Yw7File(File):
             self.novel.chapters[chId] = Chapter(title=_('Project notes'), chLevel=1, chType=1)
             self.novel.tree.append(CH_ROOT, chId)
             for xmlProjectnote in root.find('PROJECTNOTES'):
-                scId = create_id(self.novel.scenes, prefix=SCENE_PREFIX)
+                scId = create_id(self.novel.sections, prefix=SECTION_PREFIX)
                 self.novel.tree.append(chId, scId)
-                self.novel.scenes[scId] = Scene(scType=1, scPacing=0, status=0)
+                self.novel.sections[scId] = Section(scType=1, scPacing=0, status=0)
                 if xmlProjectnote.find('Title') is not None:
-                    self.novel.scenes[scId].title = xmlProjectnote.find('Title').text
+                    self.novel.sections[scId].title = xmlProjectnote.find('Title').text
                 if xmlProjectnote.find('Desc') is not None:
-                    self.novel.scenes[scId].desc = xmlProjectnote.find('Desc').text
+                    self.novel.sections[scId].desc = xmlProjectnote.find('Desc').text
 
     def _read_projectvars(self, root):
         try:
@@ -1856,7 +1856,7 @@ class Yw7File(File):
 
     def _read_scenes(self, root):
         for xmlScene in root.find('SCENES'):
-            prjScn = Scene()
+            prjScn = Section()
 
             if xmlScene.find('Title') is not None:
                 prjScn.title = xmlScene.find('Title').text
@@ -1867,7 +1867,7 @@ class Yw7File(File):
             if xmlScene.find('SceneContent') is not None:
                 sceneContent = xmlScene.find('SceneContent').text
                 if sceneContent is not None:
-                    prjScn.sceneContent = self._remove_inline_code(sceneContent)
+                    prjScn.sectionContent = self._remove_inline_code(sceneContent)
 
 
 
@@ -1890,16 +1890,16 @@ class Yw7File(File):
                 for acId in self.novel.arcs:
                     if self.novel.arcs[acId].shortName == shortName:
                         if prjScn.scType == 0:
-                            arcScenes = self.novel.arcs[acId].scenes
-                            if arcScenes is None:
-                                arcScenes = [f"{SCENE_PREFIX}{xmlScene.find('ID').text}"]
+                            arcSections = self.novel.arcs[acId].sections
+                            if not arcSections:
+                                arcSections = [f"{SECTION_PREFIX}{xmlScene.find('ID').text}"]
                             else:
-                                arcScenes.append(f"{SCENE_PREFIX}{xmlScene.find('ID').text}")
-                            self.novel.arcs[acId].scenes = arcScenes
+                                arcSections.append(f"{SECTION_PREFIX}{xmlScene.find('ID').text}")
+                            self.novel.arcs[acId].sections = arcSections
                         break
 
             ywScnAssocs = string_to_list(kwVarYw7.get('Field_SceneAssoc', ''))
-            prjScn.arcPoints = [f'{ARC_POINT_PREFIX}{arcPoint}' for arcPoint in ywScnAssocs]
+            prjScn.turningPoints = [f'{ARC_POINT_PREFIX}{turningPoint}' for turningPoint in ywScnAssocs]
 
             scMode = kwVarYw7.get('Field_SceneMode', None)
             try:
@@ -2018,14 +2018,14 @@ class Yw7File(File):
             ywScId = xmlScene.find('ID').text
             if ywScId in self._ywApIds:
                 ptId = f"{ARC_POINT_PREFIX}{ywScId}"
-                self.novel.arcPoints[ptId] = ArcPoint(title=prjScn.title,
+                self.novel.turningPoints[ptId] = TurningPoint(title=prjScn.title,
                                                       desc=prjScn.desc
                                                       )
                 if ywScnAssocs:
-                    self.novel.arcPoints[ptId].sceneAssoc = f'{SCENE_PREFIX}{ywScnAssocs[0]}'
+                    self.novel.turningPoints[ptId].sectionAssoc = f'{SECTION_PREFIX}{ywScnAssocs[0]}'
             else:
-                scId = f"{SCENE_PREFIX}{ywScId}"
-                self.novel.scenes[scId] = prjScn
+                scId = f"{SECTION_PREFIX}{ywScId}"
+                self.novel.sections[scId] = prjScn
 
     def _remove_inline_code(self, text):
         if text:
@@ -2142,7 +2142,7 @@ class NovxFile(File):
         self.xmlTree = None
         self.wcLog = {}
 
-    def adjust_scene_types(self):
+    def adjust_section_types(self):
         partType = 0
         for chId in self.novel.tree.get_children(CH_ROOT):
             if self.novel.chapters[chId].chLevel == 1:
@@ -2151,7 +2151,7 @@ class NovxFile(File):
                 self.novel.chapters[chId].chType = partType
             if self.novel.chapters[chId].chType != 0:
                 for scId in self.novel.tree.get_children(chId):
-                    self.novel.scenes[scId].scType = self.novel.chapters[chId].chType
+                    self.novel.sections[scId].scType = self.novel.chapters[chId].chType
 
     def read(self):
         try:
@@ -2190,7 +2190,7 @@ class NovxFile(File):
         self._read_chapters(xmlChapters)
         xmlArcs = xmlRoot.find('ARCS')
         self._read_arcs(xmlArcs)
-        self.adjust_scene_types()
+        self.adjust_section_types()
 
         xmlWclog = xmlRoot.find('PROGRESS')
         if xmlWclog is not None:
@@ -2202,7 +2202,7 @@ class NovxFile(File):
                     self.wcLog[wcDate] = [wcCount, wcTotalCount]
 
     def write(self):
-        self.adjust_scene_types()
+        self.adjust_section_types()
         self.novel.get_languages()
         attrib = {'version':f'{self.MAJOR_VERSION}.{self.MINOR_VERSION}',
                 'xml:lang':f'{self.novel.languageCode}-{self.novel.countryCode}',
@@ -2223,26 +2223,26 @@ class NovxFile(File):
         if prjArc.desc:
             ET.SubElement(xmlArc, 'Desc').text = self._convert_from_novelyst(prjArc.desc)
 
-        if prjArc.scenes:
-            attrib = {'ids':' '.join(prjArc.scenes)}
+        if prjArc.sections:
+            attrib = {'ids':' '.join(prjArc.sections)}
             ET.SubElement(xmlArc, 'Sections', attrib=attrib)
 
-        for apId in self.novel.tree.get_children(acId):
-            xmlPoint = ET.SubElement(xmlArc, 'POINT', attrib={'id':apId})
-            self._build_arcPoint_branch(xmlPoint, self.novel.arcPoints[apId])
+        for tpId in self.novel.tree.get_children(acId):
+            xmlPoint = ET.SubElement(xmlArc, 'POINT', attrib={'id':tpId})
+            self._build_turningPoint_branch(xmlPoint, self.novel.turningPoints[tpId])
 
         return xmlArc
 
-    def _build_arcPoint_branch(self, xmlPoint, prjArcPoint):
-        if prjArcPoint.title:
-            ET.SubElement(xmlPoint, 'Title').text = self._convert_from_novelyst(prjArcPoint.title, quick=True)
-        if prjArcPoint.desc:
-            ET.SubElement(xmlPoint, 'Desc').text = self._convert_from_novelyst(prjArcPoint.desc)
-        if prjArcPoint.notes:
-            ET.SubElement(xmlPoint, 'Notes').text = self._convert_from_novelyst(prjArcPoint.notes)
+    def _build_turningPoint_branch(self, xmlPoint, prjTurningPoint):
+        if prjTurningPoint.title:
+            ET.SubElement(xmlPoint, 'Title').text = self._convert_from_novelyst(prjTurningPoint.title, quick=True)
+        if prjTurningPoint.desc:
+            ET.SubElement(xmlPoint, 'Desc').text = self._convert_from_novelyst(prjTurningPoint.desc)
+        if prjTurningPoint.notes:
+            ET.SubElement(xmlPoint, 'Notes').text = self._convert_from_novelyst(prjTurningPoint.notes)
 
-        if prjArcPoint.sceneAssoc:
-            ET.SubElement(xmlPoint, 'Section', attrib={'id': prjArcPoint.sceneAssoc})
+        if prjTurningPoint.sectionAssoc:
+            ET.SubElement(xmlPoint, 'Section', attrib={'id': prjTurningPoint.sectionAssoc})
 
     def _build_chapter_branch(self, xmlChapters, prjChp, chId):
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER', attrib={'id':chId})
@@ -2257,8 +2257,8 @@ class NovxFile(File):
         if prjChp.desc:
             ET.SubElement(xmlChapter, 'Desc').text = self._convert_from_novelyst(prjChp.desc)
         for scId in self.novel.tree.get_children(chId):
-            xmlScene = ET.SubElement(xmlChapter, 'SECTION', attrib={'id':scId})
-            self._build_scene_branch(xmlScene, self.novel.scenes[scId])
+            xmlSection = ET.SubElement(xmlChapter, 'SECTION', attrib={'id':scId})
+            self._build_section_branch(xmlSection, self.novel.sections[scId])
         return xmlChapter
 
     def _build_character_branch(self, xmlCrt, prjCrt):
@@ -2399,35 +2399,35 @@ class NovxFile(File):
         if self.novel.customChrGoals:
             ET.SubElement(xmlProject, 'CustomChrGoals').text = self._convert_from_novelyst(self.novel.customChrGoals, quick=True)
 
-    def _build_scene_branch(self, xmlScene, prjScn):
+    def _build_section_branch(self, xmlSection, prjScn):
         if prjScn.stageLevel is not None:
-            xmlScene.set('stageLevel', str(prjScn.stageLevel))
-            xmlScene.set('type', '3')
+            xmlSection.set('stageLevel', str(prjScn.stageLevel))
+            xmlSection.set('type', '3')
         else:
-            xmlScene.set('type', str(prjScn.scType))
+            xmlSection.set('type', str(prjScn.scType))
         if prjScn.status > 1:
-            xmlScene.set('status', str(prjScn.status))
+            xmlSection.set('status', str(prjScn.status))
         if prjScn.scPacing > 0:
-            xmlScene.set('pacing', str(prjScn.scPacing))
+            xmlSection.set('pacing', str(prjScn.scPacing))
         if prjScn.appendToPrev:
-            xmlScene.set('append', '1')
+            xmlSection.set('append', '1')
         if prjScn.scMode:
-            xmlScene.set('mode', str(prjScn.scMode))
+            xmlSection.set('mode', str(prjScn.scMode))
         if prjScn.title:
-            ET.SubElement(xmlScene, 'Title').text = self._convert_from_novelyst(prjScn.title, quick=True)
+            ET.SubElement(xmlSection, 'Title').text = self._convert_from_novelyst(prjScn.title, quick=True)
         if prjScn.desc:
-            ET.SubElement(xmlScene, 'Desc').text = self._convert_from_novelyst(prjScn.desc)
+            ET.SubElement(xmlSection, 'Desc').text = self._convert_from_novelyst(prjScn.desc)
         if prjScn.goal:
-            ET.SubElement(xmlScene, 'Goal').text = self._convert_from_novelyst(prjScn.goal)
+            ET.SubElement(xmlSection, 'Goal').text = self._convert_from_novelyst(prjScn.goal)
         if prjScn.conflict:
-            ET.SubElement(xmlScene, 'Conflict').text = self._convert_from_novelyst(prjScn.conflict)
+            ET.SubElement(xmlSection, 'Conflict').text = self._convert_from_novelyst(prjScn.conflict)
         if prjScn.outcome:
-            ET.SubElement(xmlScene, 'Outcome').text = self._convert_from_novelyst(prjScn.outcome)
+            ET.SubElement(xmlSection, 'Outcome').text = self._convert_from_novelyst(prjScn.outcome)
         if prjScn.notes:
-            ET.SubElement(xmlScene, 'Notes').text = self._convert_from_novelyst(prjScn.notes)
+            ET.SubElement(xmlSection, 'Notes').text = self._convert_from_novelyst(prjScn.notes)
         tagStr = list_to_string(prjScn.tags)
         if tagStr:
-            ET.SubElement(xmlScene, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
+            ET.SubElement(xmlSection, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
 
         if (prjScn.date) and (prjScn.time):
             separator = ' '
@@ -2436,37 +2436,37 @@ class NovxFile(File):
                 if dateTime.count(':') < 2:
                     dateTime = f'{dateTime}:00'
                 if dateTime:
-                    ET.SubElement(xmlScene, 'SpecificDateTime').text = dateTime
+                    ET.SubElement(xmlSection, 'SpecificDateTime').text = dateTime
         elif (prjScn.day is not None) or (prjScn.time is not None):
             if prjScn.day or prjScn.time:
                 if prjScn.day:
-                    ET.SubElement(xmlScene, 'Day').text = prjScn.day
+                    ET.SubElement(xmlSection, 'Day').text = prjScn.day
                 if prjScn.time:
                     hours, minutes, __ = prjScn.time.split(':')
                     if hours:
-                        ET.SubElement(xmlScene, 'Hour').text = hours
+                        ET.SubElement(xmlSection, 'Hour').text = hours
                     if minutes:
-                        ET.SubElement(xmlScene, 'Minute').text = minutes
+                        ET.SubElement(xmlSection, 'Minute').text = minutes
 
         if prjScn.lastsDays:
-            ET.SubElement(xmlScene, 'LastsDays').text = prjScn.lastsDays
+            ET.SubElement(xmlSection, 'LastsDays').text = prjScn.lastsDays
         if prjScn.lastsHours:
-            ET.SubElement(xmlScene, 'LastsHours').text = prjScn.lastsHours
+            ET.SubElement(xmlSection, 'LastsHours').text = prjScn.lastsHours
         if prjScn.lastsMinutes:
-            ET.SubElement(xmlScene, 'LastsMinutes').text = prjScn.lastsMinutes
+            ET.SubElement(xmlSection, 'LastsMinutes').text = prjScn.lastsMinutes
 
         if prjScn.characters:
             attrib = {'ids':' '.join(prjScn.characters)}
-            ET.SubElement(xmlScene, 'Characters', attrib=attrib)
+            ET.SubElement(xmlSection, 'Characters', attrib=attrib)
         if prjScn.locations:
             attrib = {'ids':' '.join(prjScn.locations)}
-            ET.SubElement(xmlScene, 'Locations', attrib=attrib)
+            ET.SubElement(xmlSection, 'Locations', attrib=attrib)
         if prjScn.items:
             attrib = {'ids':' '.join(prjScn.items)}
-            ET.SubElement(xmlScene, 'Items', attrib=attrib)
+            ET.SubElement(xmlSection, 'Items', attrib=attrib)
 
-        if prjScn.sceneContent:
-            ET.SubElement(xmlScene, 'Content').text = self._convert_from_novelyst(prjScn.sceneContent)
+        if prjScn.sectionContent:
+            ET.SubElement(xmlSection, 'Content').text = self._convert_from_novelyst(prjScn.sectionContent)
 
     def _convert_from_novelyst(self, text, quick=False):
         if not text:
@@ -2567,30 +2567,30 @@ class NovxFile(File):
             self.novel.arcs[acId].shortName = self._get_xml_text(xmlArc, 'ShortName')
             self.novel.tree.append(AC_ROOT, acId)
             for xmlPoint in xmlArc.findall('POINT'):
-                apId = xmlPoint.attrib['id']
-                self._read_arcPoint(xmlPoint, apId, acId)
-                self.novel.tree.append(acId, apId)
+                tpId = xmlPoint.attrib['id']
+                self._read_turningPoint(xmlPoint, tpId, acId)
+                self.novel.tree.append(acId, tpId)
 
             acSections = []
             xmlSections = xmlArc.find('Sections')
             if xmlSections is not None:
                 scIds = xmlSections.get('ids', None)
                 for scId in string_to_list(scIds, divider=' '):
-                    if scId and scId in self.novel.scenes:
+                    if scId and scId in self.novel.sections:
                         acSections.append(scId)
-                        self.novel.scenes[scId].scArcs.append(acId)
-                self.novel.arcs[acId].scenes = acSections
+                        self.novel.sections[scId].scArcs.append(acId)
+                self.novel.arcs[acId].sections = acSections
 
-    def _read_arcPoint(self, xmlPoint, apId, acId):
-        self.novel.arcPoints[apId] = ArcPoint(on_element_change=self.on_element_change)
-        self.novel.arcPoints[apId].title = self._get_xml_text(xmlPoint, 'Title')
-        self.novel.arcPoints[apId].desc = self._convert_to_novelyst(xmlPoint.find('Desc'))
-        self.novel.arcPoints[apId].notes = self._convert_to_novelyst(xmlPoint.find('Notes'))
-        xmlSceneAssoc = xmlPoint.find('Section')
-        if xmlSceneAssoc is not None:
-            scId = xmlSceneAssoc.get('id', None)
-            self.novel.arcPoints[apId].sceneAssoc = scId
-            self.novel.scenes[scId].scArcPoints[apId] = acId
+    def _read_turningPoint(self, xmlPoint, tpId, acId):
+        self.novel.turningPoints[tpId] = TurningPoint(on_element_change=self.on_element_change)
+        self.novel.turningPoints[tpId].title = self._get_xml_text(xmlPoint, 'Title')
+        self.novel.turningPoints[tpId].desc = self._convert_to_novelyst(xmlPoint.find('Desc'))
+        self.novel.turningPoints[tpId].notes = self._convert_to_novelyst(xmlPoint.find('Notes'))
+        xmlSectionAssoc = xmlPoint.find('Section')
+        if xmlSectionAssoc is not None:
+            scId = xmlSectionAssoc.get('id', None)
+            self.novel.turningPoints[tpId].sectionAssoc = scId
+            self.novel.sections[scId].scTurningPoints[tpId] = acId
 
     def _read_chapters(self, parent, partType=0):
         for xmlChapter in parent.findall('CHAPTER'):
@@ -2604,11 +2604,11 @@ class NovxFile(File):
             self.novel.chapters[chId].desc = self._convert_to_novelyst(xmlChapter.find('Desc'))
             self.novel.tree.append(CH_ROOT, chId)
             if xmlChapter.find('SECTION'):
-                for xmlScene in xmlChapter.findall('SECTION'):
-                    scId = xmlScene.attrib['id']
-                    self._read_scene(xmlScene, scId)
+                for xmlSection in xmlChapter.findall('SECTION'):
+                    scId = xmlSection.attrib['id']
+                    self._read_section(xmlSection, scId)
                     if self.novel.chapters[chId].chType > 0:
-                        self.novel.scenes[scId].scType = self.novel.chapters[chId].chType
+                        self.novel.sections[scId].scType = self.novel.chapters[chId].chType
                     self.novel.tree.append(chId, scId)
 
     def _read_characters(self, root):
@@ -2679,36 +2679,36 @@ class NovxFile(File):
         self.novel.customChrBio = self._get_xml_text(xmlProject, 'CustomChrBio')
         self.novel.customChrGoals = self._get_xml_text(xmlProject, 'CustomChrGoals')
 
-    def _read_scene(self, xmlScene, scId):
-        self.novel.scenes[scId] = Scene(on_element_change=self.on_element_change)
+    def _read_section(self, xmlSection, scId):
+        self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
         try:
-            self.novel.scenes[scId].stageLevel = int(xmlScene.get('stageLevel', None))
+            self.novel.sections[scId].stageLevel = int(xmlSection.get('stageLevel', None))
         except TypeError:
-            self.novel.scenes[scId].stageLevel = None
-        if self.novel.scenes[scId].stageLevel is not None:
-            self.novel.scenes[scId].scType = 3
+            self.novel.sections[scId].stageLevel = None
+        if self.novel.sections[scId].stageLevel is not None:
+            self.novel.sections[scId].scType = 3
         else:
-            self.novel.scenes[scId].scType = int(xmlScene.get('type'), 0)
-        self.novel.scenes[scId].status = int(xmlScene.get('status', 1))
-        self.novel.scenes[scId].scPacing = int(xmlScene.get('pacing', 0))
+            self.novel.sections[scId].scType = int(xmlSection.get('type'), 0)
+        self.novel.sections[scId].status = int(xmlSection.get('status', 1))
+        self.novel.sections[scId].scPacing = int(xmlSection.get('pacing', 0))
         try:
-            self.novel.scenes[scId].scMode = int(xmlScene.get('mode', None))
+            self.novel.sections[scId].scMode = int(xmlSection.get('mode', None))
         except TypeError:
-            self.novel.scenes[scId].scMode = None
-        self.novel.scenes[scId].appendToPrev = xmlScene.get('append', None) == '1'
-        self.novel.scenes[scId].title = self._get_xml_text(xmlScene, 'Title')
-        self.novel.scenes[scId].desc = self._convert_to_novelyst(xmlScene.find('Desc'))
-        self.novel.scenes[scId].sceneContent = self._convert_to_novelyst(xmlScene.find('Content'))
-        self.novel.scenes[scId].notes = self._convert_to_novelyst(xmlScene.find('Notes'))
-        tags = string_to_list(self._get_xml_text(xmlScene, 'Tags'))
-        self.novel.scenes[scId].tags = self._strip_spaces(tags)
+            self.novel.sections[scId].scMode = None
+        self.novel.sections[scId].appendToPrev = xmlSection.get('append', None) == '1'
+        self.novel.sections[scId].title = self._get_xml_text(xmlSection, 'Title')
+        self.novel.sections[scId].desc = self._convert_to_novelyst(xmlSection.find('Desc'))
+        self.novel.sections[scId].sectionContent = self._convert_to_novelyst(xmlSection.find('Content'))
+        self.novel.sections[scId].notes = self._convert_to_novelyst(xmlSection.find('Notes'))
+        tags = string_to_list(self._get_xml_text(xmlSection, 'Tags'))
+        self.novel.sections[scId].tags = self._strip_spaces(tags)
 
-        self.novel.scenes[scId].date = ''
-        self.novel.scenes[scId].time = ''
-        self.novel.scenes[scId].day = ''
-        self.novel.scenes[scId].time = ''
-        if xmlScene.find('SpecificDateTime') is not None:
-            dateTimeStr = xmlScene.find('SpecificDateTime').text
+        self.novel.sections[scId].date = ''
+        self.novel.sections[scId].time = ''
+        self.novel.sections[scId].day = ''
+        self.novel.sections[scId].time = ''
+        if xmlSection.find('SpecificDateTime') is not None:
+            dateTimeStr = xmlSection.find('SpecificDateTime').text
 
             try:
                 dateTime = datetime.fromisoformat(dateTimeStr)
@@ -2716,66 +2716,66 @@ class NovxFile(File):
                 pass
             else:
                 startDateTime = dateTime.isoformat().split('T')
-                self.novel.scenes[scId].date = startDateTime[0]
-                self.novel.scenes[scId].time = startDateTime[1]
+                self.novel.sections[scId].date = startDateTime[0]
+                self.novel.sections[scId].time = startDateTime[1]
         else:
-            if xmlScene.find('Day') is not None:
-                day = xmlScene.find('Day').text
+            if xmlSection.find('Day') is not None:
+                day = xmlSection.find('Day').text
 
                 try:
                     int(day)
                 except ValueError:
                     pass
                 else:
-                    self.novel.scenes[scId].day = day
+                    self.novel.sections[scId].day = day
 
             hasUnspecificTime = False
-            if xmlScene.find('Hour') is not None:
-                hour = xmlScene.find('Hour').text.zfill(2)
+            if xmlSection.find('Hour') is not None:
+                hour = xmlSection.find('Hour').text.zfill(2)
                 hasUnspecificTime = True
             else:
                 hour = '00'
-            if xmlScene.find('Minute') is not None:
-                minute = xmlScene.find('Minute').text.zfill(2)
+            if xmlSection.find('Minute') is not None:
+                minute = xmlSection.find('Minute').text.zfill(2)
                 hasUnspecificTime = True
             else:
                 minute = '00'
             if hasUnspecificTime:
-                self.novel.scenes[scId].time = f'{hour}:{minute}:00'
+                self.novel.sections[scId].time = f'{hour}:{minute}:00'
 
-        self.novel.scenes[scId].lastsDays = self._get_xml_text(xmlScene, 'LastsDays')
-        self.novel.scenes[scId].lastsHours = self._get_xml_text(xmlScene, 'LastsHours')
-        self.novel.scenes[scId].lastsMinutes = self._get_xml_text(xmlScene, 'LastsMinutes')
-        self.novel.scenes[scId].goal = self._convert_to_novelyst(xmlScene.find('Goal'))
-        self.novel.scenes[scId].conflict = self._convert_to_novelyst(xmlScene.find('Conflict'))
-        self.novel.scenes[scId].outcome = self._convert_to_novelyst(xmlScene.find('Outcome'))
+        self.novel.sections[scId].lastsDays = self._get_xml_text(xmlSection, 'LastsDays')
+        self.novel.sections[scId].lastsHours = self._get_xml_text(xmlSection, 'LastsHours')
+        self.novel.sections[scId].lastsMinutes = self._get_xml_text(xmlSection, 'LastsMinutes')
+        self.novel.sections[scId].goal = self._convert_to_novelyst(xmlSection.find('Goal'))
+        self.novel.sections[scId].conflict = self._convert_to_novelyst(xmlSection.find('Conflict'))
+        self.novel.sections[scId].outcome = self._convert_to_novelyst(xmlSection.find('Outcome'))
 
         scCharacters = []
-        xmlCharacters = xmlScene.find('Characters')
+        xmlCharacters = xmlSection.find('Characters')
         if xmlCharacters is not None:
             crIds = xmlCharacters.get('ids', None)
             for crId in string_to_list(crIds, divider=' '):
                 if crId and crId in self.novel.characters:
                     scCharacters.append(crId)
-            self.novel.scenes[scId].characters = scCharacters
+            self.novel.sections[scId].characters = scCharacters
 
         scLocations = []
-        xmlLocations = xmlScene.find('Locations')
+        xmlLocations = xmlSection.find('Locations')
         if xmlLocations is not None:
             lcIds = xmlLocations.get('ids', None)
             for lcId in string_to_list(lcIds, divider=' '):
                 if lcId and lcId in self.novel.locations:
                     scLocations.append(lcId)
-            self.novel.scenes[scId].locations = scLocations
+            self.novel.sections[scId].locations = scLocations
 
         scItems = []
-        xmlItems = xmlScene.find('Items')
+        xmlItems = xmlSection.find('Items')
         if xmlItems is not None:
             itIds = xmlItems.get('ids', None)
             for itId in string_to_list(itIds, divider=' '):
                 if itId and itId in self.novel.items:
                     scItems.append(itId)
-            self.novel.scenes[scId].items = scItems
+            self.novel.sections[scId].items = scItems
 
     def _strip_spaces(self, lines):
         stripped = []
@@ -2811,84 +2811,84 @@ class NvTree:
             IT_ROOT:[],
             AC_ROOT:[],
             }
-        self.srtScenes = {}
-        self.srtArcPoints = {}
+        self.srtSections = {}
+        self.srtTurningPoints = {}
 
     def append(self, parent, iid):
         if parent in self.roots:
             self.roots[parent].append(iid)
             if parent == CH_ROOT:
-                self.srtScenes[iid] = []
+                self.srtSections[iid] = []
             elif parent == AC_ROOT:
-                self.srtArcPoints[iid] = []
+                self.srtTurningPoints[iid] = []
         elif parent.startswith(CHAPTER_PREFIX):
             try:
-                self.srtScenes[parent].append(iid)
+                self.srtSections[parent].append(iid)
             except:
-                self.srtScenes[parent] = [iid]
+                self.srtSections[parent] = [iid]
         elif parent.startswith(ARC_PREFIX):
             try:
-                self.srtArcPoints[parent].append(iid)
+                self.srtTurningPoints[parent].append(iid)
             except:
-                self.srtArcPoints[parent] = [iid]
+                self.srtTurningPoints[parent] = [iid]
 
     def delete_children(self, parent):
         if parent in self.roots:
             self.roots[parent] = []
             if parent == CH_ROOT:
-                self.srtScenes = {}
+                self.srtSections = {}
             elif parent == AC_ROOT:
-                self.srtArcPoints = {}
+                self.srtTurningPoints = {}
         elif parent.startswith(CHAPTER_PREFIX):
-            self.srtScenes[parent] = []
+            self.srtSections[parent] = []
         elif parent.startswith(ARC_PREFIX):
-            self.srtArcPoints[parent] = []
+            self.srtTurningPoints[parent] = []
 
     def get_children(self, item):
         if item in self.roots:
             return self.roots[item]
 
         elif item.startswith(CHAPTER_PREFIX):
-            return self.srtScenes.get(item, [])
+            return self.srtSections.get(item, [])
 
         elif item.startswith(ARC_PREFIX):
-            return self.srtArcPoints.get(item, [])
+            return self.srtTurningPoints.get(item, [])
 
     def insert(self, parent, index, iid):
         if parent in self.roots:
             self.roots[parent].insert(index, iid)
             if parent == CH_ROOT:
-                self.srtScenes[iid] = []
+                self.srtSections[iid] = []
             elif parent == AC_ROOT:
-                self.srtArcPoints[iid] = []
+                self.srtTurningPoints[iid] = []
         elif parent.startswith(CHAPTER_PREFIX):
             try:
-                self.srtScenes[parent].insert(index, iid)
+                self.srtSections[parent].insert(index, iid)
             except:
-                self.srtScenes[parent] = [iid]
+                self.srtSections[parent] = [iid]
         elif parent.startswith(ARC_PREFIX):
             try:
-                self.srtArcPoints.insert(index, iid)
+                self.srtTurningPoints.insert(index, iid)
             except:
-                self.srtArcPoints[parent] = [iid]
+                self.srtTurningPoints[parent] = [iid]
 
     def reset(self):
         for item in self.roots:
             self.roots[item] = []
-        self.srtScenes = {}
-        self.srtArcPoints = {}
+        self.srtSections = {}
+        self.srtTurningPoints = {}
 
     def set_children(self, item, newchildren):
         if item in self.roots:
             self.roots[item] = newchildren[:]
             if item == CH_ROOT:
-                self.srtScenes = {}
+                self.srtSections = {}
             elif item == AC_ROOT:
-                self.srtArcPoints = {}
+                self.srtTurningPoints = {}
         elif item.startswith(CHAPTER_PREFIX):
-            self.srtScenes[item] = newchildren[:]
+            self.srtSections[item] = newchildren[:]
         elif item.startswith(ARC_PREFIX):
-            self.srtArcPoints[item] = newchildren[:]
+            self.srtTurningPoints[item] = newchildren[:]
 
 
 
