@@ -72,23 +72,23 @@ LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
 IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
 
 BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
-CHAPTERS_SUFFIX = '_tmp_chapters'
-CHARACTERS_SUFFIX = '_tmp_characters'
-CHARLIST_SUFFIX = '_tmp_charlist'
+CHAPTERS_SUFFIX = '_chapters_tmp'
+CHARACTERS_SUFFIX = '_characters_tmp'
+CHARLIST_SUFFIX = '_charlist_tmp'
 DATA_SUFFIX = '_data'
-ITEMLIST_SUFFIX = '_tmp_itemlist'
-ITEMS_SUFFIX = '_tmp_items'
-LOCATIONS_SUFFIX = '_tmp_locations'
-LOCLIST_SUFFIX = '_tmp_loclist'
-MANUSCRIPT_SUFFIX = '_tmp_manuscript'
-NOTES_SUFFIX = '_tmp_notes'
-PARTS_SUFFIX = '_tmp_parts'
+ITEMLIST_SUFFIX = '_itemlist_tmp'
+ITEMS_SUFFIX = '_items_tmp'
+LOCATIONS_SUFFIX = '_locations_tmp'
+LOCLIST_SUFFIX = '_loclist_tmp'
+MANUSCRIPT_SUFFIX = '_manuscript_tmp'
+NOTES_SUFFIX = '_notes_tmp'
+PARTS_SUFFIX = '_parts_tmp'
 PLOTLIST_SUFFIX = '_plotlist'
 PLOT_SUFFIX = '_plot'
-PROOF_SUFFIX = '_tmp_proof'
-SECTIONLIST_SUFFIX = '_tmp_sectionlist'
-SECTIONS_SUFFIX = '_tmp_sections'
-TODO_SUFFIX = '_tmp_todo'
+PROOF_SUFFIX = '_proof_tmp'
+SECTIONLIST_SUFFIX = '_sectionlist_tmp'
+SECTIONS_SUFFIX = '_sections_tmp'
+TODO_SUFFIX = '_todo_tmp'
 XREF_SUFFIX = '_xref'
 
 
@@ -642,12 +642,12 @@ class WorldElement(BasicElement):
     def __init__(self,
             aka=None,
             tags=None,
-            image=None,
             **kwargs):
         super().__init__(**kwargs)
         self._aka = aka
-        self._image = image
         self._tags = tags
+
+        self._links = None
 
     @property
     def aka(self):
@@ -660,16 +660,6 @@ class WorldElement(BasicElement):
             self.on_element_change()
 
     @property
-    def image(self):
-        return self._image
-
-    @image.setter
-    def image(self, newVal):
-        if self._image != newVal:
-            self._image = newVal
-            self.on_element_change()
-
-    @property
     def tags(self):
         return self._tags
 
@@ -677,6 +667,19 @@ class WorldElement(BasicElement):
     def tags(self, newVal):
         if self._tags != newVal:
             self._tags = newVal
+            self.on_element_change()
+
+    @property
+    def links(self):
+        try:
+            return self._links.copy()
+        except AttributeError:
+            return None
+
+    @links.setter
+    def links(self, newVal):
+        if self._links != newVal:
+            self._links = newVal
             self.on_element_change()
 
 
@@ -1195,11 +1198,7 @@ class Yw7File(File):
     def read(self):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
-        try:
-            self.tree = ET.parse(self.filePath)
-        except:
-            raise Error(f'{_("Can not process file")}: "{norm_path(self.filePath)}".')
-
+        self.tree = ET.parse(self.filePath)
         self._ywApIds = []
         self.wcLog = {}
         root = self.tree.getroot()
@@ -1388,8 +1387,6 @@ class Yw7File(File):
         def build_location_subtree(xmlLoc, prjLoc):
             if prjLoc.title:
                 ET.SubElement(xmlLoc, 'Title').text = prjLoc.title
-            if prjLoc.image:
-                ET.SubElement(xmlLoc, 'ImageFile').text = prjLoc.image
             if prjLoc.desc:
                 ET.SubElement(xmlLoc, 'Desc').text = prjLoc.desc
             if prjLoc.aka:
@@ -1409,8 +1406,6 @@ class Yw7File(File):
         def build_item_subtree(xmlItm, prjItm):
             if prjItm.title:
                 ET.SubElement(xmlItm, 'Title').text = prjItm.title
-            if prjItm.image:
-                ET.SubElement(xmlItm, 'ImageFile').text = prjItm.image
             if prjItm.desc:
                 ET.SubElement(xmlItm, 'Desc').text = prjItm.desc
             if prjItm.aka:
@@ -1423,8 +1418,6 @@ class Yw7File(File):
                 ET.SubElement(xmlCrt, 'Title').text = prjCrt.title
             if prjCrt.desc:
                 ET.SubElement(xmlCrt, 'Desc').text = prjCrt.desc
-            if prjCrt.image:
-                ET.SubElement(xmlCrt, 'ImageFile').text = prjCrt.image
             if prjCrt.notes:
                 ET.SubElement(xmlCrt, 'Notes').text = prjCrt.notes
             if prjCrt.aka:
@@ -1453,8 +1446,11 @@ class Yw7File(File):
             if self.novel.wordTarget is not None:
                 ET.SubElement(xmlProject, 'WordTarget').text = str(self.novel.wordTarget)
 
+            workPhase = self.novel.workPhase
+            if workPhase is not None:
+                workPhase = str(workPhase)
             fields = {
-                'Field_WorkPhase': str(self.novel.workPhase),
+                'Field_WorkPhase': workPhase,
                 'Field_RenumberChapters': isTrue(self.novel.renumberChapters),
                 'Field_RenumberParts': isTrue(self.novel.renumberParts),
                 'Field_RenumberWithinParts': isTrue(self.novel.renumberWithinParts),
@@ -1643,8 +1639,6 @@ class Yw7File(File):
             if xmlLocation.find('Title') is not None:
                 self.novel.locations[lcId].title = xmlLocation.find('Title').text
 
-            if xmlLocation.find('ImageFile') is not None:
-                self.novel.locations[lcId].image = xmlLocation.find('ImageFile').text
 
             if xmlLocation.find('Desc') is not None:
                 self.novel.locations[lcId].desc = xmlLocation.find('Desc').text
@@ -1667,8 +1661,6 @@ class Yw7File(File):
             if xmlItem.find('Title') is not None:
                 self.novel.items[itId].title = xmlItem.find('Title').text
 
-            if xmlItem.find('ImageFile') is not None:
-                self.novel.items[itId].image = xmlItem.find('ImageFile').text
 
             if xmlItem.find('Desc') is not None:
                 self.novel.items[itId].desc = xmlItem.find('Desc').text
@@ -1771,8 +1763,6 @@ class Yw7File(File):
             if xmlCharacter.find('Title') is not None:
                 self.novel.characters[crId].title = xmlCharacter.find('Title').text
 
-            if xmlCharacter.find('ImageFile') is not None:
-                self.novel.characters[crId].image = xmlCharacter.find('ImageFile').text
 
             if xmlCharacter.find('Desc') is not None:
                 self.novel.characters[crId].desc = xmlCharacter.find('Desc').text
@@ -2027,8 +2017,6 @@ class Yw7File(File):
             if xmlScene.find('Outcome') is not None:
                 prjScn.outcome = xmlScene.find('Outcome').text
 
-            if xmlScene.find('ImageFile') is not None:
-                prjScn.image = xmlScene.find('ImageFile').text
 
             scCharacters = []
             if xmlScene.find('Characters') is not None:
@@ -2193,11 +2181,7 @@ class NovxFile(File):
                     self.novel.sections[scId].scType = self.novel.chapters[chId].chType
 
     def read(self):
-        try:
-            self.xmlTree = ET.parse(self.filePath)
-        except:
-            raise Error(f'{_("Can not process file")}: "{norm_path(self.filePath)}".')
-
+        self.xmlTree = ET.parse(self.filePath)
         xmlRoot = self.xmlTree.getroot()
         try:
             majorVersionStr, minorVersionStr = xmlRoot.attrib['version'].split('.')
@@ -2320,8 +2304,12 @@ class NovxFile(File):
         tagStr = list_to_string(prjCrt.tags)
         if tagStr:
             ET.SubElement(xmlCrt, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
-        if prjCrt.image:
-            ET.SubElement(xmlCrt, 'Link').text = self._convert_from_novelyst(prjCrt.image, quick=True)
+        if prjCrt.links:
+            for path in prjCrt.links:
+                xmlLink = ET.SubElement(xmlCrt, 'Link')
+                xmlLink.set('path', path)
+                if prjCrt.links[path]:
+                    xmlLink.text = prjCrt.links[path]
 
     def _build_element_tree(self, root):
 
@@ -2377,8 +2365,12 @@ class NovxFile(File):
         tagStr = list_to_string(prjItm.tags)
         if tagStr:
             ET.SubElement(xmlItm, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
-        if prjItm.image:
-            ET.SubElement(xmlItm, 'Link').text = self._convert_from_novelyst(prjItm.image, quick=True)
+        if prjItm.links:
+            for path in prjItm.links:
+                xmlLink = ET.SubElement(xmlItm, 'Link')
+                xmlLink.set('path', path)
+                if prjItm.links[path]:
+                    xmlLink.text = prjItm.links[path]
 
     def _build_location_branch(self, xmlLoc, prjLoc):
         if prjLoc.title:
@@ -2390,8 +2382,12 @@ class NovxFile(File):
         tagStr = list_to_string(prjLoc.tags)
         if tagStr:
             ET.SubElement(xmlLoc, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
-        if prjLoc.image:
-            ET.SubElement(xmlLoc, 'Link').text = self._convert_from_novelyst(prjLoc.image, quick=True)
+        if prjLoc.links:
+            for path in prjLoc.links:
+                xmlLink = ET.SubElement(xmlLoc, 'Link')
+                xmlLink.set('path', path)
+                if prjLoc.links[path]:
+                    xmlLink.text = prjLoc.links[path]
 
     def _build_project_branch(self, xmlProject):
         if self.novel.renumberChapters:
@@ -2587,6 +2583,17 @@ class NovxFile(File):
         else:
             return default
 
+    def _get_link_dict(self, parent):
+        links = {}
+        for xmlLink in parent.findall('Link'):
+            path = xmlLink.attrib.get('path', None)
+            if path:
+                title = xmlLink.text
+                if title is None:
+                    title = _('Unnamed link')
+                links[path] = title
+        return links
+
     def _postprocess_xml_file(self, filePath):
         with open(filePath, 'r', encoding='utf-8') as f:
             text = f.read()
@@ -2656,7 +2663,7 @@ class NovxFile(File):
             self.novel.characters[crId] = Character(on_element_change=self.on_element_change)
             self.novel.characters[crId].isMajor = xmlCharacter.get('major', None) == '1'
             self.novel.characters[crId].title = self._get_xml_text(xmlCharacter, 'Title')
-            self.novel.characters[crId].image = self._get_xml_text(xmlCharacter, 'Link')
+            self.novel.characters[crId].links = self._get_link_dict(xmlCharacter)
             self.novel.characters[crId].desc = self._convert_to_novelyst(xmlCharacter.find('Desc'))
             self.novel.characters[crId].aka = self._get_xml_text(xmlCharacter, 'Aka')
             tags = string_to_list(self._get_xml_text(xmlCharacter, 'Tags'))
@@ -2672,11 +2679,11 @@ class NovxFile(File):
             itId = xmlItem.attrib['id']
             self.novel.items[itId] = WorldElement(on_element_change=self.on_element_change)
             self.novel.items[itId].title = self._get_xml_text(xmlItem, 'Title')
-            self.novel.items[itId].image = self._get_xml_text(xmlItem, 'Link')
             self.novel.items[itId].desc = self._convert_to_novelyst(xmlItem.find('Desc'))
             self.novel.items[itId].aka = self._get_xml_text(xmlItem, 'Aka')
             tags = string_to_list(self._get_xml_text(xmlItem, 'Tags'))
             self.novel.items[itId].tags = self._strip_spaces(tags)
+            self.novel.items[itId].links = self._get_link_dict(xmlItem)
             self.novel.tree.append(IT_ROOT, itId)
 
     def _read_locations(self, root):
@@ -2684,7 +2691,7 @@ class NovxFile(File):
             lcId = xmlLocation.attrib['id']
             self.novel.locations[lcId] = WorldElement(on_element_change=self.on_element_change)
             self.novel.locations[lcId].title = self._get_xml_text(xmlLocation, 'Title')
-            self.novel.locations[lcId].image = self._get_xml_text(xmlLocation, 'Link')
+            self.novel.locations[lcId].links = self._get_link_dict(xmlLocation)
             self.novel.locations[lcId].desc = self._convert_to_novelyst(xmlLocation.find('Desc'))
             self.novel.locations[lcId].aka = self._get_xml_text(xmlLocation, 'Aka')
             tags = string_to_list(self._get_xml_text(xmlLocation, 'Tags'))
