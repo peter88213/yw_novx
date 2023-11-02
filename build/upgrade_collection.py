@@ -1190,6 +1190,8 @@ class Yw7File(File):
         'Field_CustomAR',
         ]
 
+    STAGE_MARKER = 'stage'
+
     def __init__(self, filePath, **kwargs):
         super().__init__(filePath)
         self.tree = None
@@ -1265,6 +1267,9 @@ class Yw7File(File):
             if prjScn.desc is not None:
                 ET.SubElement(xmlScene, 'Desc').text = prjScn.desc
 
+            if not turningPoint:
+                scTags = prjScn.tags
+
 
             scTypeEncoding = (
                 (False, None),
@@ -1276,6 +1281,12 @@ class Yw7File(File):
                 scType = 2
             elif prjScn.scType is None:
                 scType = 0
+            elif prjScn.stageLevel is not None:
+                scType = 2
+                if not scTags:
+                    scTags = [self.STAGE_MARKER]
+                elif not self.STAGE_MARKER in scTags:
+                    scTags.append(self.STAGE_MARKER)
             else:
                 scType = prjScn.scType
             yUnused, ySceneType = scTypeEncoding[scType]
@@ -1297,8 +1308,8 @@ class Yw7File(File):
                 ET.SubElement(xmlSceneFields[scId], 'Field_SceneMode').text = str(prjScn.scMode)
             if prjScn.notes:
                 ET.SubElement(xmlScene, 'Notes').text = prjScn.notes
-            if prjScn.tags:
-                ET.SubElement(xmlScene, 'Tags').text = list_to_string(prjScn.tags)
+            if scTags:
+                ET.SubElement(xmlScene, 'Tags').text = list_to_string(scTags)
             if prjScn.appendToPrev:
                 ET.SubElement(xmlScene, 'AppendToPrev').text = '-1'
 
@@ -2055,6 +2066,10 @@ class Yw7File(File):
                 if ywScnAssocs:
                     self.novel.turningPoints[ptId].sectionAssoc = f'{SECTION_PREFIX}{ywScnAssocs[0]}'
             else:
+                if prjScn.tags and self.STAGE_MARKER in prjScn.tags:
+                    prjScn.stageLevel = 2
+                    prjScn.scType = 3
+                    prjScn.tags = prjScn.tags.remove(self.STAGE_MARKER)
                 scId = f"{SECTION_PREFIX}{ywScId}"
                 self.novel.sections[scId] = prjScn
 
