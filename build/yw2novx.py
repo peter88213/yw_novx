@@ -642,12 +642,12 @@ class WorldElement(BasicElement):
     def __init__(self,
             aka=None,
             tags=None,
+            links=None,
             **kwargs):
         super().__init__(**kwargs)
         self._aka = aka
         self._tags = tags
-
-        self._links = None
+        self._links = links
 
     @property
     def aka(self):
@@ -845,6 +845,9 @@ class Section(BasicElement):
             lastsDays=None,
             scMode=None,
             stageLevel=None,
+            characters=None,
+            locations=None,
+            items=None,
             **kwargs):
         super().__init__(**kwargs)
         self._sectionContent = None
@@ -867,9 +870,9 @@ class Section(BasicElement):
         self._scMode = scMode
         self._stageLevel = stageLevel
 
-        self._characters = None
-        self._locations = None
-        self._items = None
+        self._characters = characters
+        self._locations = locations
+        self._items = items
 
         self.scArcs = []
         self.scTurningPoints = {}
@@ -1215,7 +1218,7 @@ class Yw7File(File):
 
         xmlWclog = root.find('WCLog')
         if xmlWclog is not None:
-            for xmlWc in xmlWclog.findall('WC'):
+            for xmlWc in xmlWclog.iterfind('WC'):
                 wcDate = xmlWc.find('Date').text
                 wcCount = xmlWc.find('Count').text
                 wcTotalCount = xmlWc.find('TotalCount').text
@@ -1724,7 +1727,7 @@ class Yw7File(File):
                         prjChapter.chType = 3
 
             kwVarYw7 = {}
-            for xmlChapterFields in xmlChapter.findall('Fields'):
+            for xmlChapterFields in xmlChapter.iterfind('Fields'):
                 prjChapter.isTrash = False
                 if xmlChapterFields.find('Field_IsTrash') is not None:
                     if xmlChapterFields.find('Field_IsTrash').text == '1':
@@ -1743,7 +1746,7 @@ class Yw7File(File):
 
             scenes = []
             if xmlChapter.find('Scenes') is not None:
-                for scn in xmlChapter.find('Scenes').findall('ScID'):
+                for scn in xmlChapter.find('Scenes').iterfind('ScID'):
                     scId = scn.text
                     scenes.append(scId)
 
@@ -1827,7 +1830,7 @@ class Yw7File(File):
                 pass
 
         kwVarYw7 = {}
-        for xmlProjectFields in xmlProject.findall('Fields'):
+        for xmlProjectFields in xmlProject.iterfind('Fields'):
             for fieldName in self.PRJ_KWVAR_YW7:
                 xmlField = xmlProjectFields.find(fieldName)
                 if xmlField  is not None:
@@ -1913,7 +1916,7 @@ class Yw7File(File):
 
             prjScn.scType = 0
             kwVarYw7 = {}
-            for xmlSceneFields in xmlScene.findall('Fields'):
+            for xmlSceneFields in xmlScene.iterfind('Fields'):
                 if xmlSceneFields.find('Field_SceneType') is not None:
                     if xmlSceneFields.find('Field_SceneType').text == '1':
                         prjScn.scType = 1
@@ -2232,7 +2235,7 @@ class NovxFile(File):
 
         xmlWclog = xmlRoot.find('PROGRESS')
         if xmlWclog is not None:
-            for xmlWc in xmlWclog.findall('WC'):
+            for xmlWc in xmlWclog.iterfind('WC'):
                 wcDate = xmlWc.get('date')
                 wcCount = xmlWc.get('count')
                 wcTotalCount = xmlWc.get('withUnused')
@@ -2600,7 +2603,7 @@ class NovxFile(File):
 
     def _get_link_dict(self, parent):
         links = {}
-        for xmlLink in parent.findall('Link'):
+        for xmlLink in parent.iterfind('Link'):
             path = xmlLink.attrib.get('path', None)
             if path:
                 title = xmlLink.text
@@ -2620,14 +2623,14 @@ class NovxFile(File):
             raise Error(f'{_("Cannot write file")}: "{norm_path(filePath)}".')
 
     def _read_arcs(self, xmlArcs):
-        for xmlArc in xmlArcs.findall('ARC'):
+        for xmlArc in xmlArcs.iterfind('ARC'):
             acId = xmlArc.attrib['id']
             self.novel.arcs[acId] = Arc(on_element_change=self.on_element_change)
             self.novel.arcs[acId].title = self._get_xml_text(xmlArc, 'Title')
             self.novel.arcs[acId].desc = self._convert_to_novelyst(xmlArc.find('Desc'))
             self.novel.arcs[acId].shortName = self._get_xml_text(xmlArc, 'ShortName')
             self.novel.tree.append(AC_ROOT, acId)
-            for xmlPoint in xmlArc.findall('POINT'):
+            for xmlPoint in xmlArc.iterfind('POINT'):
                 tpId = xmlPoint.attrib['id']
                 self._read_turningPoint(xmlPoint, tpId, acId)
                 self.novel.tree.append(acId, tpId)
@@ -2654,7 +2657,7 @@ class NovxFile(File):
             self.novel.sections[scId].scTurningPoints[tpId] = acId
 
     def _read_chapters(self, parent, partType=0):
-        for xmlChapter in parent.findall('CHAPTER'):
+        for xmlChapter in parent.iterfind('CHAPTER'):
             chId = xmlChapter.attrib['id']
             self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
             self.novel.chapters[chId].chType = int(xmlChapter.get('type', 0))
@@ -2665,7 +2668,7 @@ class NovxFile(File):
             self.novel.chapters[chId].desc = self._convert_to_novelyst(xmlChapter.find('Desc'))
             self.novel.tree.append(CH_ROOT, chId)
             if xmlChapter.find('SECTION'):
-                for xmlSection in xmlChapter.findall('SECTION'):
+                for xmlSection in xmlChapter.iterfind('SECTION'):
                     scId = xmlSection.attrib['id']
                     self._read_section(xmlSection, scId)
                     if self.novel.chapters[chId].chType > 0:
