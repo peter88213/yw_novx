@@ -2370,8 +2370,10 @@ class NovxFile(File):
 
     def _build_chapter_branch(self, xmlChapters, prjChp, chId):
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER', attrib={'id':chId})
-        xmlChapter.set('type', str(prjChp.chType))
-        xmlChapter.set('level', str(prjChp.chLevel))
+        if prjChp.chType:
+            xmlChapter.set('type', str(prjChp.chType))
+        if prjChp.chLevel == 1:
+            xmlChapter.set('level', '1')
         if prjChp.isTrash:
             xmlChapter.set('isTrash', '1')
         if prjChp.noNumber:
@@ -2544,8 +2546,7 @@ class NovxFile(File):
     def _build_section_branch(self, xmlSection, prjScn):
         if prjScn.stageLevel is not None:
             xmlSection.set('stageLevel', str(prjScn.stageLevel))
-            xmlSection.set('type', '3')
-        else:
+        elif prjScn.scType:
             xmlSection.set('type', str(prjScn.scType))
         if prjScn.status > 1:
             xmlSection.set('status', str(prjScn.status))
@@ -2752,8 +2753,16 @@ class NovxFile(File):
         for xmlChapter in parent.iterfind('CHAPTER'):
             chId = xmlChapter.attrib['id']
             self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
-            self.novel.chapters[chId].chType = int(xmlChapter.get('type', 0))
-            self.novel.chapters[chId].chLevel = int(xmlChapter.get('level', 2))
+            chType = xmlChapter.get('type', None)
+            if chType in ('1', '2', '3'):
+                self.novel.chapters[chId].chType = int(chType)
+            else:
+                self.novel.chapters[chId].chType = 0
+            chLevel = xmlChapter.get('level', None)
+            if chLevel == '1':
+                self.novel.chapters[chId].chLevel = 1
+            else:
+                self.novel.chapters[chId].chLevel = 2
             self.novel.chapters[chId].isTrash = xmlChapter.get('isTrash', None) == '1'
             self.novel.chapters[chId].noNumber = xmlChapter.get('noNumber', None) == '1'
             self.novel.chapters[chId].title = self._get_xml_text(xmlChapter, 'Title')
@@ -2818,9 +2827,10 @@ class NovxFile(File):
         self.novel.romanChapterNumbers = xmlProject.get('romanChapterNumbers', None) == '1'
         self.novel.romanPartNumbers = xmlProject.get('romanPartNumbers', None) == '1'
         self.novel.saveWordCount = xmlProject.get('saveWordCount', None) == '1'
-        try:
-            self.novel.workPhase = int(xmlProject.get('workPhase', None))
-        except TypeError:
+        workPhase = xmlProject.get('workPhase', None)
+        if workPhase in ('1', '2', '3', '4', '5'):
+            self.novel.workPhase = int(workPhase)
+        else:
             self.novel.workPhase = None
         self.novel.title = self._get_xml_text(xmlProject, 'Title')
         self.novel.authorName = self._get_xml_text(xmlProject, 'Author')
@@ -2842,19 +2852,31 @@ class NovxFile(File):
 
     def _read_section(self, xmlSection, scId):
         self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
-        try:
-            self.novel.sections[scId].stageLevel = int(xmlSection.get('stageLevel', None))
-        except TypeError:
-            self.novel.sections[scId].stageLevel = None
-        if self.novel.sections[scId].stageLevel is not None:
+        stageLevel = xmlSection.get('stageLevel', None)
+        if stageLevel in ('1', '2'):
+            self.novel.sections[scId].stageLevel = int(stageLevel)
             self.novel.sections[scId].scType = 3
         else:
-            self.novel.sections[scId].scType = int(xmlSection.get('type'), 0)
-        self.novel.sections[scId].status = int(xmlSection.get('status', 1))
-        self.novel.sections[scId].scPacing = int(xmlSection.get('pacing', 0))
-        try:
-            self.novel.sections[scId].scMode = int(xmlSection.get('mode', None))
-        except TypeError:
+            self.novel.sections[scId].stageLevel = None
+            scType = xmlSection.get('type', None)
+            if scType in ('1', '2', '3'):
+                self.novel.sections[scId].scType = int(scType)
+            else:
+                self.novel.sections[scId].scType = 0
+        status = xmlSection.get('status', None)
+        if status in ('2', '3', '4', '5'):
+            self.novel.sections[scId].status = int(status)
+        else:
+            self.novel.sections[scId].status = 1
+        scPacing = xmlSection.get('pacing', 0)
+        if scPacing in ('1', '2'):
+            self.novel.sections[scId].scPacing = int(scPacing)
+        else:
+            self.novel.sections[scId].scPacing = 0
+        scMode = xmlSection.get('mode', None)
+        if scMode in ('1', '2', '3', '4', '5'):
+            self.novel.sections[scId].scMode = int(scMode)
+        else:
             self.novel.sections[scId].scMode = None
         self.novel.sections[scId].appendToPrev = xmlSection.get('append', None) == '1'
         self.novel.sections[scId].title = self._get_xml_text(xmlSection, 'Title')
