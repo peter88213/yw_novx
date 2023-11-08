@@ -2186,6 +2186,12 @@ from xml import sax
 
 
 class NovxPParser(sax.ContentHandler):
+    NOTE_TYPES = [
+        '',
+        '@fn*',
+        '@fn',
+        '@en',
+        ]
 
     def __init__(self):
         super().__init__()
@@ -2217,7 +2223,7 @@ class NovxPParser(sax.ContentHandler):
         elif name == 'span':
             if self._span:
                 self.textList.append(self._span.pop())
-        elif name == 'comment':
+        elif name in ('comment', 'note'):
             self.textList.append('*/')
 
     def startElement(self, name, attrs):
@@ -2239,8 +2245,14 @@ class NovxPParser(sax.ContentHandler):
         elif name == 'blockquote':
             self.textList.append('> ')
             self._paragraph = True
-        elif name == 'comment':
+        elif name == 'note':
             self.textList.append('/*')
+            try:
+                typeIndex = int(xmlAttributes['type'])
+            except:
+                pass
+            else:
+                self.textList.append(self.NOTE_TYPES[typeIndex])
 
 
 
@@ -2622,8 +2634,11 @@ class NovxFile(File):
                 ('[/i]', '</em>'),
                 ('[b]', '<strong>'),
                 ('[/b]', '</strong>'),
-                ('/*', '<comment>'),
-                ('*/', '</comment>'),
+                ('/*@fn*', '<note type="1">'),
+                ('/*@fn', '<note type="2">'),
+                ('/*@en', '<note type="3">'),
+                ('/*', '<note>'),
+                ('*/', '</note>'),
             ])
             for language in self.novel.languages:
                 tags.append(f'lang={language}')
