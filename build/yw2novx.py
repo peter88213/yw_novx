@@ -206,6 +206,7 @@ class Novel(BasicElement):
             customOutcome=None,
             customChrBio=None,
             customChrGoals=None,
+            referenceDate=None,
             tree=None,
             **kwargs):
         super().__init__(**kwargs)
@@ -230,6 +231,7 @@ class Novel(BasicElement):
         self._customOutcome = customOutcome
         self._customChrBio = customChrBio
         self._customChrGoals = customChrGoals
+        self._referenceDate = referenceDate
 
         self.chapters = {}
         self.sections = {}
@@ -451,6 +453,16 @@ class Novel(BasicElement):
     def customChrGoals(self, newVal):
         if self._customChrGoals != newVal:
             self._customChrGoals = newVal
+            self.on_element_change()
+
+    @property
+    def referenceDate(self):
+        return self._referenceDate
+
+    @referenceDate.setter
+    def referenceDate(self, newVal):
+        if self._referenceDate != newVal:
+            self._referenceDate = newVal
             self.on_element_change()
 
     def update_section_arcs(self):
@@ -694,6 +706,8 @@ class Character(WorldElement):
             goals=None,
             fullName=None,
             isMajor=None,
+            birthDate=None,
+            deathDate=None,
             **kwargs):
         super().__init__(**kwargs)
         self._notes = notes
@@ -701,6 +715,8 @@ class Character(WorldElement):
         self._goals = goals
         self._fullName = fullName
         self._isMajor = isMajor
+        self._birthDate = birthDate
+        self._deathDate = deathDate
 
     @property
     def notes(self):
@@ -750,6 +766,26 @@ class Character(WorldElement):
     def isMajor(self, newVal):
         if self._isMajor != newVal:
             self._isMajor = newVal
+            self.on_element_change()
+
+    @property
+    def birthDate(self):
+        return self._birthDate
+
+    @birthDate.setter
+    def birthDate(self, newVal):
+        if self._birthDate != newVal:
+            self._birthDate = newVal
+            self.on_element_change()
+
+    @property
+    def deathDate(self):
+        return self._deathDate
+
+    @deathDate.setter
+    def deathDate(self, newVal):
+        if self._deathDate != newVal:
+            self._deathDate = newVal
             self.on_element_change()
 
 
@@ -1154,6 +1190,20 @@ class Yw7File(File):
         'Field_SceneMode',
         ]
 
+    CRT_KWVAR_YW7 = [
+        'Field_Link',
+        'Field_BirthDate',
+        'Field_DeathDate',
+        ]
+
+    LOC_KWVAR_YW7 = [
+        'Field_Link',
+        ]
+
+    ITM_KWVAR_YW7 = [
+        'Field_Link',
+        ]
+
     _CDATA_TAGS = [
         'Title',
         'AuthorName',
@@ -1446,6 +1496,16 @@ class Yw7File(File):
                 ET.SubElement(xmlCrt, 'FullName').text = prjCrt.fullName
             if prjCrt.isMajor:
                 ET.SubElement(xmlCrt, 'Major').text = '-1'
+            fields = {
+                'Field_BirthDate': prjCrt.birthDate,
+                'Field_DeathDate': prjCrt.deathDate,
+                }
+            xmlCrtFields = None
+            for field in fields:
+                if fields[field]:
+                    if xmlCrtFields is None:
+                        xmlCrtFields = ET.SubElement(xmlCrt, 'Fields')
+                    ET.SubElement(xmlCrtFields, field).text = fields[field]
 
         def build_project_subtree(xmlProject):
             ET.SubElement(xmlProject, 'Ver').text = '7'
@@ -1480,6 +1540,7 @@ class Yw7File(File):
                 'Field_CustomChrBio': self.novel.customChrBio,
                 'Field_CustomChrGoals': self.novel.customChrGoals,
                 'Field_SaveWordCount': isTrue(self.novel.saveWordCount),
+                'Field_ReferenceDate': self.novel.referenceDate,
                 }
             xmlProjectFields = ET.SubElement(xmlProject, 'Fields')
             for field in fields:
@@ -1805,6 +1866,16 @@ class Yw7File(File):
                 self.novel.characters[crId].isMajor = True
             else:
                 self.novel.characters[crId].isMajor = False
+
+            kwVarYw7 = {}
+            xmlCharacterFields = xmlCharacter.find('Fields')
+            if xmlCharacterFields is not None:
+                for fieldName in self.CRT_KWVAR_YW7:
+                    xmlField = xmlCharacterFields.find(fieldName)
+                    if xmlField  is not None:
+                        kwVarYw7[fieldName] = xmlField.text
+            self.novel.characters[crId].birthDate = kwVarYw7.get('Field_BirthDate', '')
+            self.novel.characters[crId].deathDate = kwVarYw7.get('Field_DeathDate', '')
 
     def _read_project(self, root):
         xmlProject = root.find('PROJECT')
@@ -2236,9 +2307,9 @@ class NovxFile(File):
         xmlWclog = xmlRoot.find('PROGRESS')
         if xmlWclog is not None:
             for xmlWc in xmlWclog.iterfind('WC'):
-                wcDate = xmlWc.get('date')
-                wcCount = xmlWc.get('count')
-                wcTotalCount = xmlWc.get('withUnused')
+                wcDate = xmlWc.find('Date').text
+                wcCount = xmlWc.find('Count').text
+                wcTotalCount = xmlWc.find('WithUnused').text
                 if wcDate and wcCount and wcTotalCount:
                     self.wcLog[wcDate] = [wcCount, wcTotalCount]
 
@@ -2328,6 +2399,10 @@ class NovxFile(File):
                 xmlLink.set('path', path)
                 if prjCrt.links[path]:
                     xmlLink.text = prjCrt.links[path]
+        if prjCrt.birthDate:
+            ET.SubElement(xmlCrt, 'BirthDate').text = prjCrt.birthDate
+        if prjCrt.deathDate:
+            ET.SubElement(xmlCrt, 'DeathDate').text = prjCrt.deathDate
 
     def _build_element_tree(self, root):
 
@@ -2369,9 +2444,9 @@ class NovxFile(File):
                     wcLastCount = self.wcLog[wc][0]
                     wcLastTotalCount = self.wcLog[wc][1]
                 xmlWc = ET.SubElement(xmlWcLog, 'WC')
-                xmlWc.set('date', wc)
-                xmlWc.set('count', self.wcLog[wc][0])
-                xmlWc.set('withUnused', self.wcLog[wc][1])
+                ET.SubElement(xmlWc, 'Date').text = wc
+                ET.SubElement(xmlWc, 'Count').text = self.wcLog[wc][0]
+                ET.SubElement(xmlWc, 'WithUnused').text = self.wcLog[wc][1]
 
     def _build_item_branch(self, xmlItm, prjItm):
         if prjItm.title:
@@ -2422,10 +2497,6 @@ class NovxFile(File):
             xmlProject.set('saveWordCount', '1')
         if self.novel.workPhase is not None:
             xmlProject.set('workPhase', str(self.novel.workPhase))
-        if self.novel.wordCountStart:
-            xmlProject.set('wordCountStart', str(self.novel.wordCountStart))
-        if self.novel.wordTarget:
-            xmlProject.set('wordTarget', str(self.novel.wordTarget))
 
         if self.novel.title:
             ET.SubElement(xmlProject, 'Title').text = self._convert_from_novelyst(self.novel.title, quick=True)
@@ -2451,6 +2522,12 @@ class NovxFile(File):
             ET.SubElement(xmlProject, 'CustomChrBio').text = self._convert_from_novelyst(self.novel.customChrBio, quick=True)
         if self.novel.customChrGoals:
             ET.SubElement(xmlProject, 'CustomChrGoals').text = self._convert_from_novelyst(self.novel.customChrGoals, quick=True)
+        if self.novel.wordCountStart:
+            ET.SubElement(xmlProject, 'WordCountStart').text = str(self.novel.wordCountStart)
+        if self.novel.wordTarget:
+            ET.SubElement(xmlProject, 'WordTarget').text = str(self.novel.wordTarget)
+        if self.novel.referenceDate:
+            ET.SubElement(xmlProject, 'ReferenceDate').text = self.novel.referenceDate
 
     def _build_section_branch(self, xmlSection, prjScn):
         if prjScn.stageLevel is not None:
@@ -2690,6 +2767,8 @@ class NovxFile(File):
             self.novel.characters[crId].bio = self._convert_to_novelyst(xmlCharacter.find('Bio'))
             self.novel.characters[crId].goals = self._convert_to_novelyst(xmlCharacter.find('Goals'))
             self.novel.characters[crId].fullName = self._get_xml_text(xmlCharacter, 'FullName')
+            self.novel.characters[crId].birthDate = self._get_xml_text(xmlCharacter, 'BirthDate')
+            self.novel.characters[crId].deathDate = self._get_xml_text(xmlCharacter, 'DeathDate')
             self.novel.tree.append(CR_ROOT, crId)
 
     def _read_items(self, root):
@@ -2724,8 +2803,6 @@ class NovxFile(File):
         self.novel.romanChapterNumbers = xmlProject.get('romanChapterNumbers', None) == '1'
         self.novel.romanPartNumbers = xmlProject.get('romanPartNumbers', None) == '1'
         self.novel.saveWordCount = xmlProject.get('saveWordCount', None) == '1'
-        self.novel.wordCountStart = int(xmlProject.get('wordCountStart', 0))
-        self.novel.wordTarget = int(xmlProject.get('wordTarget', 0))
         try:
             self.novel.workPhase = int(xmlProject.get('workPhase', None))
         except TypeError:
@@ -2742,6 +2819,11 @@ class NovxFile(File):
         self.novel.customOutcome = self._get_xml_text(xmlProject, 'CustomOutcome')
         self.novel.customChrBio = self._get_xml_text(xmlProject, 'CustomChrBio')
         self.novel.customChrGoals = self._get_xml_text(xmlProject, 'CustomChrGoals')
+        if xmlProject.find('WordCountStart') is not None:
+            self.novel.wordCountStart = int(xmlProject.find('WordCountStart').text)
+        if xmlProject.find('WordCountStart') is not None:
+            self.novel.wordTarget = int(xmlProject.find('WordTarget').text)
+        self.novel.referenceDate = self._get_xml_text(xmlProject, 'ReferenceDate')
 
     def _read_section(self, xmlSection, scId):
         self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
