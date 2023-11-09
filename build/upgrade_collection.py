@@ -2674,11 +2674,11 @@ class NovxFile(File):
         if prjScn.time:
             ET.SubElement(xmlSection, 'Time').text = prjScn.time
 
-        if prjScn.lastsDays:
+        if prjScn.lastsDays and prjScn.lastsDays != '0':
             ET.SubElement(xmlSection, 'LastsDays').text = prjScn.lastsDays
-        if prjScn.lastsHours:
+        if prjScn.lastsHours and prjScn.lastsHours != '0':
             ET.SubElement(xmlSection, 'LastsHours').text = prjScn.lastsHours
-        if prjScn.lastsMinutes:
+        if prjScn.lastsMinutes and prjScn.lastsMinutes != '0':
             ET.SubElement(xmlSection, 'LastsMinutes').text = prjScn.lastsMinutes
 
         if prjScn.characters:
@@ -2929,7 +2929,7 @@ class NovxFile(File):
         self.novel.customChrGoals = self._get_xml_text(xmlProject, 'CustomChrGoals')
         if xmlProject.find('WordCountStart') is not None:
             self.novel.wordCountStart = int(xmlProject.find('WordCountStart').text)
-        if xmlProject.find('WordCountStart') is not None:
+        if xmlProject.find('WordTarget') is not None:
             self.novel.wordTarget = int(xmlProject.find('WordTarget').text)
         self.novel.referenceDate = self._get_xml_text(xmlProject, 'ReferenceDate')
 
