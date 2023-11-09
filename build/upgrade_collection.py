@@ -2819,7 +2819,7 @@ class NovxFile(File):
                     if scId and scId in self.novel.sections:
                         acSections.append(scId)
                         self.novel.sections[scId].scArcs.append(acId)
-                self.novel.arcs[acId].sections = acSections
+            self.novel.arcs[acId].sections = acSections
 
     def _read_turningPoint(self, xmlPoint, tpId, acId):
         self.novel.turningPoints[tpId] = TurningPoint(on_element_change=self.on_element_change)
