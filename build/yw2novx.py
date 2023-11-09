@@ -2767,7 +2767,7 @@ class NovxFile(File):
             nvText = ''.join(parser.textList).strip()
         return nvText
 
-    def _get_xml_text(self, parent, elemName, default=''):
+    def _get_xml_text(self, parent, elemName, default=None):
         if parent.find(elemName) is not None:
             return parent.find(elemName).text
         else:
@@ -2965,14 +2965,12 @@ class NovxFile(File):
         tags = string_to_list(self._get_xml_text(xmlSection, 'Tags'))
         self.novel.sections[scId].tags = self._strip_spaces(tags)
 
-        self.novel.sections[scId].date = ''
-        self.novel.sections[scId].day = ''
         if xmlSection.find('Date') is not None:
             dateStr = xmlSection.find('Date').text
             try:
                 date.fromisoformat(dateStr)
             except:
-                pass
+                self.novel.sections[scId].date = None
             else:
                 self.novel.sections[scId].date = dateStr
         elif xmlSection.find('Day') is not None:
@@ -2980,17 +2978,16 @@ class NovxFile(File):
             try:
                 int(dayStr)
             except ValueError:
-                pass
+                self.novel.sections[scId].day = None
             else:
                 self.novel.sections[scId].day = dayStr
 
-        self.novel.sections[scId].time = ''
         if xmlSection.find('Time') is not None:
             timeStr = xmlSection.find('Time').text
             try:
                 time.fromisoformat(timeStr)
             except:
-                pass
+                self.novel.sections[scId].time = None
             else:
                 self.novel.sections[scId].time = timeStr
 
