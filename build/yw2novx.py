@@ -851,6 +851,7 @@ def create_id(elements, prefix=''):
         i += 1
     return f'{prefix}{i}'
 
+from datetime import datetime, date, timedelta
 
 
 ADDITIONAL_WORD_LIMITS = re.compile('--|—|–')
@@ -862,6 +863,16 @@ class Section(BasicElement):
 
     NULL_DATE = '0001-01-01'
     NULL_TIME = '00:00:00'
+
+    WEEKDAYS = [
+        _('Monday'),
+        _('Tuesday'),
+        _('Wednesday'),
+        _('Thursday'),
+        _('Friday'),
+        _('Saturday'),
+        _('Sunday')
+        ]
 
     def __init__(self,
             scType=None,
@@ -897,12 +908,16 @@ class Section(BasicElement):
         self._goal = goal
         self._conflict = conflict
         self._outcome = outcome
+
         self._date = date
+
         self._time = time
+
         self._day = day
         self._lastsMinutes = lastsMinutes
         self._lastsHours = lastsHours
         self._lastsDays = lastsDays
+
         self._scMode = scMode
         self._stageLevel = stageLevel
 
@@ -1023,6 +1038,8 @@ class Section(BasicElement):
     def date(self, newVal):
         if self._date != newVal:
             self._date = newVal
+            if self._date:
+                self._day = None
             self.on_element_change()
 
     @property
@@ -1043,6 +1060,8 @@ class Section(BasicElement):
     def day(self, newVal):
         if self._day != newVal:
             self._day = newVal
+            if self._day:
+                self._date = None
             self.on_element_change()
 
     @property
@@ -1133,6 +1152,77 @@ class Section(BasicElement):
         if self._items != newVal:
             self._items = newVal
             self.on_element_change()
+
+    def get_end_date_time(self):
+        endDate = None
+        endTime = None
+        endDay = None
+        if self.lastsDays:
+            lastsDays = int(self.lastsDays)
+        else:
+            lastsDays = 0
+        if self.lastsHours:
+            lastsSeconds = int(self.lastsHours) * 3600
+        else:
+            lastsSeconds = 0
+        if self.lastsMinutes:
+            lastsSeconds += int(self.lastsMinutes) * 60
+        sectionDuration = timedelta(days=lastsDays, seconds=lastsSeconds)
+        if self.time:
+            if self.date:
+                try:
+                    sectionStart = datetime.fromisoformat(f'{self.date} {self.time}')
+                    sectionEnd = sectionStart + sectionDuration
+                    endDate, endTime = sectionEnd.isoformat().split('T')
+                except:
+                    pass
+            else:
+                try:
+                    if self.day:
+                        dayInt = int(self.day)
+                    else:
+                        dayInt = 0
+                    startDate = (date.min + timedelta(days=dayInt)).isoformat()
+                    sectionStart = datetime.fromisoformat(f'{startDate} {self.time}')
+                    sectionEnd = sectionStart + sectionDuration
+                    endDate, endTime = sectionEnd.isoformat().split('T')
+                    endDay = str((date.fromisoformat(endDate) - date.min).days)
+                    endDate = None
+                except:
+                    pass
+        return endDate, endTime, endDay
+
+    def day_to_specific_date(self, referenceDate):
+        if not self._date:
+            try:
+                deltaDays = timedelta(days=int(self._day))
+                refDate = date.fromisoformat(referenceDate)
+                self.date = refDate + deltaDays.isoformat()
+            except:
+                self.date = ''
+                return False
+
+        return True
+
+    def specific_date_to_day(self, referenceDate):
+        if not self._day:
+            try:
+                sectionDate = date.fromisoformat(self._date)
+                referenceDate = date.fromisoformat(referenceDate)
+                self.day = str((sectionDate - referenceDate).days)
+            except:
+                self.day = ''
+                return False
+
+        return True
+
+    def weekDay(self, referenceDate=None):
+        if self._date:
+            return self.WEEKDAYS[date.fromisoformat(self._date).weekday()]
+
+        elif self._day and referenceDate:
+            days = int(self._day) + date.fromisoformat(referenceDate).weekday()
+            return self.WEEKDAYS[days % 7]
 
 
 
@@ -2177,7 +2267,8 @@ class Yw7File(File):
             raise Error(f'{_("Cannot write file")}: "{norm_path(ywProject.filePath)}".')
 
 from html import unescape
-from datetime import datetime
+from datetime import date
+from datetime import time
 from xml import sax
 
 
@@ -2572,24 +2663,12 @@ class NovxFile(File):
         if tagStr:
             ET.SubElement(xmlSection, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
 
-        if (prjScn.date) and (prjScn.time):
-            separator = ' '
-            dateTime = f'{prjScn.date}{separator}{prjScn.time}'
-            if dateTime != separator:
-                if dateTime.count(':') < 2:
-                    dateTime = f'{dateTime}:00'
-                if dateTime:
-                    ET.SubElement(xmlSection, 'SpecificDateTime').text = dateTime
-        elif (prjScn.day is not None) or (prjScn.time is not None):
-            if prjScn.day or prjScn.time:
-                if prjScn.day:
-                    ET.SubElement(xmlSection, 'Day').text = prjScn.day
-                if prjScn.time:
-                    hours, minutes, __ = prjScn.time.split(':')
-                    if hours:
-                        ET.SubElement(xmlSection, 'Hour').text = hours
-                    if minutes:
-                        ET.SubElement(xmlSection, 'Minute').text = minutes
+        if prjScn.date:
+            ET.SubElement(xmlSection, 'Date').text = prjScn.date
+        elif prjScn.day:
+            ET.SubElement(xmlSection, 'Day').text = prjScn.day
+        if prjScn.time:
+            ET.SubElement(xmlSection, 'Time').text = prjScn.time
 
         if prjScn.lastsDays:
             ET.SubElement(xmlSection, 'LastsDays').text = prjScn.lastsDays
@@ -2887,44 +2966,33 @@ class NovxFile(File):
         self.novel.sections[scId].tags = self._strip_spaces(tags)
 
         self.novel.sections[scId].date = ''
-        self.novel.sections[scId].time = ''
         self.novel.sections[scId].day = ''
-        self.novel.sections[scId].time = ''
-        if xmlSection.find('SpecificDateTime') is not None:
-            dateTimeStr = xmlSection.find('SpecificDateTime').text
-
+        if xmlSection.find('Date') is not None:
+            dateStr = xmlSection.find('Date').text
             try:
-                dateTime = datetime.fromisoformat(dateTimeStr)
+                date.fromisoformat(dateStr)
             except:
                 pass
             else:
-                startDateTime = dateTime.isoformat().split('T')
-                self.novel.sections[scId].date = startDateTime[0]
-                self.novel.sections[scId].time = startDateTime[1]
-        else:
-            if xmlSection.find('Day') is not None:
-                day = xmlSection.find('Day').text
-
-                try:
-                    int(day)
-                except ValueError:
-                    pass
-                else:
-                    self.novel.sections[scId].day = day
-
-            hasUnspecificTime = False
-            if xmlSection.find('Hour') is not None:
-                hour = xmlSection.find('Hour').text.zfill(2)
-                hasUnspecificTime = True
+                self.novel.sections[scId].date = dateStr
+        elif xmlSection.find('Day') is not None:
+            dayStr = xmlSection.find('Day').text
+            try:
+                int(dayStr)
+            except ValueError:
+                pass
             else:
-                hour = '00'
-            if xmlSection.find('Minute') is not None:
-                minute = xmlSection.find('Minute').text.zfill(2)
-                hasUnspecificTime = True
+                self.novel.sections[scId].day = dayStr
+
+        self.novel.sections[scId].time = ''
+        if xmlSection.find('Time') is not None:
+            timeStr = xmlSection.find('Time').text
+            try:
+                time.fromisoformat(timeStr)
+            except:
+                pass
             else:
-                minute = '00'
-            if hasUnspecificTime:
-                self.novel.sections[scId].time = f'{hour}:{minute}:00'
+                self.novel.sections[scId].time = timeStr
 
         self.novel.sections[scId].lastsDays = self._get_xml_text(xmlSection, 'LastsDays')
         self.novel.sections[scId].lastsHours = self._get_xml_text(xmlSection, 'LastsHours')
