@@ -10,7 +10,7 @@ For further information see https://github.com/peter88213/yw2novx
 License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 import sys
-sys.path.append('../../novxlib/src')
+sys.path.append('../../novxlib-Alpha/src')
 import inliner
 
 SRC = '../src/'
@@ -21,7 +21,7 @@ TARGET_FILE = f'{BUILD}upgrade_collection.py'
 
 def main():
     inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novx_', './')
-    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib-Alpha', '../../novxlib/src/')
+    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib-Alpha', '../../novxlib-Alpha/src/')
     print('Done.')
 
 
