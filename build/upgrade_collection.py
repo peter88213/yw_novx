@@ -76,6 +76,7 @@ __all__ = [
     'SECTIONS_SUFFIX',
     'TODO_SUFFIX',
     'XREF_SUFFIX',
+    'WEEKDAYS',
     ]
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
@@ -129,6 +130,16 @@ except:
     def _(message):
         return message
 
+WEEKDAYS = [
+    _('Monday'),
+    _('Tuesday'),
+    _('Wednesday'),
+    _('Thursday'),
+    _('Friday'),
+    _('Saturday'),
+    _('Sunday')
+    ]
+
 
 def norm_path(path):
     if path is None:
@@ -160,6 +171,7 @@ def list_to_string(elements, divider=';'):
 
 from abc import ABC
 from urllib.parse import quote
+from datetime import date
 
 
 class BasicElement:
@@ -251,7 +263,6 @@ class Novel(BasicElement):
         self._customOutcome = customOutcome
         self._customChrBio = customChrBio
         self._customChrGoals = customChrGoals
-        self._referenceDate = referenceDate
 
         self.chapters = {}
         self.sections = {}
@@ -262,7 +273,12 @@ class Novel(BasicElement):
         self.items = {}
         self.characters = {}
         self.projectNotes = {}
-
+        try:
+            self.referenceWeekDay = date.fromisoformat(referenceDate).weekday()
+            self._referenceDate = referenceDate
+        except:
+            self.referenceWeekDay = None
+            self._referenceDate = None
         self.tree = tree
 
     @property
@@ -482,8 +498,17 @@ class Novel(BasicElement):
     @referenceDate.setter
     def referenceDate(self, newVal):
         if self._referenceDate != newVal:
-            self._referenceDate = newVal
-            self.on_element_change()
+            if not newVal:
+                self._referenceDate = None
+                self.referenceWeekDay = None
+            else:
+                try:
+                    self.referenceWeekDay = date.fromisoformat(newVal).weekday()
+                except:
+                    pass
+                else:
+                    self._referenceDate = newVal
+                    self.on_element_change()
 
     def update_section_arcs(self):
         for scId in self.sections:
@@ -884,16 +909,6 @@ class Section(BasicElement):
     NULL_DATE = '0001-01-01'
     NULL_TIME = '00:00:00'
 
-    WEEKDAYS = [
-        _('Monday'),
-        _('Tuesday'),
-        _('Wednesday'),
-        _('Thursday'),
-        _('Friday'),
-        _('Saturday'),
-        _('Sunday')
-        ]
-
     def __init__(self,
             scType=None,
             scPacing=None,
@@ -904,8 +919,8 @@ class Section(BasicElement):
             goal=None,
             conflict=None,
             outcome=None,
-            date=None,
-            time=None,
+            scDate=None,
+            scTime=None,
             day=None,
             lastsMinutes=None,
             lastsHours=None,
@@ -929,9 +944,14 @@ class Section(BasicElement):
         self._conflict = conflict
         self._outcome = outcome
 
-        self._date = date
+        try:
+            self.weekDay = date.fromisoformat(scDate).weekday()
+            self._date = scDate
+        except:
+            self.weekDay = None
+            self._date = None
 
-        self._time = time
+        self._time = scTime
 
         self._day = day
         self._lastsMinutes = lastsMinutes
@@ -1057,10 +1077,18 @@ class Section(BasicElement):
     @date.setter
     def date(self, newVal):
         if self._date != newVal:
-            self._date = newVal
-            if self._date:
-                self._day = None
-            self.on_element_change()
+            if not newVal:
+                self._date = None
+                self.weekDay = None
+            else:
+                try:
+                    self.weekDay = date.fromisoformat(newVal).weekday()
+                except:
+                    pass
+                else:
+                    self._date = newVal
+                    self._day = None
+                    self.on_element_change()
 
     @property
     def time(self):
@@ -1082,6 +1110,7 @@ class Section(BasicElement):
             self._day = newVal
             if self._day:
                 self._date = None
+                self.weekDay = None
             self.on_element_change()
 
     @property
@@ -1235,14 +1264,6 @@ class Section(BasicElement):
                 return False
 
         return True
-
-    def weekDay(self, referenceDate=None):
-        if self._date:
-            return self.WEEKDAYS[date.fromisoformat(self._date).weekday()]
-
-        elif self._day and referenceDate:
-            days = int(self._day) + date.fromisoformat(referenceDate).weekday()
-            return self.WEEKDAYS[days % 7]
 
 
 
