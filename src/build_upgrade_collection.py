@@ -21,7 +21,7 @@ TARGET_FILE = f'{BUILD}upgrade_collection.py'
 
 def main():
     inliner.run(SOURCE_FILE, TARGET_FILE, 'yw2novx_', './')
-    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
+    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib-Alpha', '../../novxlib/src/')
     print('Done.')
 
 
