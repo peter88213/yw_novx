@@ -928,7 +928,6 @@ class Section(BasicElement):
             lastsMinutes=None,
             lastsHours=None,
             lastsDays=None,
-            stageLevel=None,
             characters=None,
             locations=None,
             items=None,
@@ -959,8 +958,6 @@ class Section(BasicElement):
         self._lastsMinutes = lastsMinutes
         self._lastsHours = lastsHours
         self._lastsDays = lastsDays
-
-        self._stageLevel = stageLevel
 
         self._characters = characters
         self._locations = locations
@@ -1146,16 +1143,6 @@ class Section(BasicElement):
             self.on_element_change()
 
     @property
-    def stageLevel(self):
-        return self._stageLevel
-
-    @stageLevel.setter
-    def stageLevel(self, newVal):
-        if self._stageLevel != newVal:
-            self._stageLevel = newVal
-            self.on_element_change()
-
-    @property
     def characters(self):
         try:
             return self._characters[:]
@@ -1259,6 +1246,83 @@ class Section(BasicElement):
                 return False
 
         return True
+
+from xml import sax
+
+
+class NovxPParser(sax.ContentHandler):
+    NOTE_TYPES = {
+        'footnote':'@fn',
+        'endnote':'@en',
+        }
+
+    def __init__(self):
+        super().__init__()
+        self.textList = None
+        self._paragraph = None
+        self._span = None
+        self._comment = None
+
+    def feed(self, xmlString):
+        self.textList = []
+        if xmlString:
+            self._comment = False
+            self._paragraph = False
+            self._span = []
+            sax.parseString(xmlString, self)
+
+    def characters(self, content):
+        if self._paragraph:
+            self.textList.append(content)
+
+    def endElement(self, name):
+        if name == 'p':
+            while self._span:
+                self.textList.append(self._span.pop())
+            if self._comment:
+                self.textList.append(' ')
+            else:
+                self.textList.append('\n')
+            self._paragraph = False
+        elif name == 'em':
+            self.textList.append('[/i]')
+        elif name == 'strong':
+            self.textList.append('[/b]')
+        elif name == 'span':
+            if self._span:
+                self.textList.append(self._span.pop())
+        elif name in ('comment', 'note'):
+            self._comment = False
+            self.textList.append('*/')
+        elif name in ('creator', 'date', 'note-citation'):
+            self._paragraph = True
+
+    def startElement(self, name, attrs):
+        xmlAttributes = {}
+        for attribute in attrs.items():
+            attrKey, attrValue = attribute
+            xmlAttributes[attrKey] = attrValue
+        locale = xmlAttributes.get('xml:lang', None)
+        if name == 'p':
+            self._paragraph = True
+            if xmlAttributes.get('style', None) == 'quotations':
+                self.textList.append('> ')
+        elif name == 'em':
+            self.textList.append('[i]')
+        elif name == 'strong':
+            self.textList.append('[b]')
+        elif name == 'span':
+            if locale is not None:
+                self._span.append(f'[/lang={locale}]')
+                self.textList.append(f'[lang={locale}]')
+        elif name in ('comment', 'note'):
+            self._comment = True
+            self.textList.append('/*')
+            if name == 'note':
+                noteClass = xmlAttributes.get('class', 'footnote')
+                self.textList.append(f"{self.NOTE_TYPES.get(noteClass, '@fn')} ")
+        elif name in ('creator', 'date', 'note-citation'):
+            self._paragraph = False
 
 
 
@@ -1403,6 +1467,7 @@ class Yw7File(File):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
 
+        self._novxParser = NovxPParser()
         self._noteCounter = 0
         self._noteNumber = 0
         if self.novel.languages is None:
@@ -1443,16 +1508,16 @@ class Yw7File(File):
                 )
             if turningPoint:
                 scType = 2
-            elif prjScn.scType is None:
+            elif prjScn.scType in (0, None):
                 scType = 0
-            elif prjScn.stageLevel is not None:
+            elif prjScn.scType > 1:
                 scType = 2
                 if not scTags:
                     scTags = [self.STAGE_MARKER]
                 elif not self.STAGE_MARKER in scTags:
                     scTags.append(self.STAGE_MARKER)
             else:
-                scType = prjScn.scType
+                scType = 3
             yUnused, ySceneType = scTypeEncoding[scType]
             if yUnused:
                 ET.SubElement(xmlScene, 'Unused').text = '-1'
@@ -1467,7 +1532,8 @@ class Yw7File(File):
                 ET.SubElement(xmlScene, 'SceneContent')
                 return
 
-            ET.SubElement(xmlScene, 'SceneContent').text = prjScn.sectionContent
+            self._novxParser.feed(f'<Content>{prjScn.sectionContent}</Content>')
+            ET.SubElement(xmlScene, 'SceneContent').text = ''.join(self._novxParser.textList)
             if prjScn.notes:
                 ET.SubElement(xmlScene, 'Notes').text = prjScn.notes
             if scTags:
@@ -1517,7 +1583,7 @@ class Yw7File(File):
                 for itId in prjScn.items:
                     ET.SubElement(xmlItems, 'ItemID').text = itId[2:]
 
-        def build_chapter_subtree(xmlChapter, prjChp, acId=None):
+        def build_chapter_subtree(xmlChapter, prjChp, acId=None, chType=None):
 
             chTypeEncoding = (
                 (False, '0', '0'),
@@ -1525,12 +1591,13 @@ class Yw7File(File):
                 (True, '1', '2'),
                 (True, '1', '0'),
                 )
-            if acId is not None:
-                chType = 2
-            elif prjChp.chType is None:
-                chType = 0
-            else:
-                chType = prjChp.chType
+            if chType is None:
+                if acId is not None:
+                    chType = 2
+                elif prjChp.chType in (0, None):
+                    chType = 0
+                else:
+                    chType = 3
             yUnused, yType, yChapterType = chTypeEncoding[chType]
 
             i = 1
@@ -1746,8 +1813,8 @@ class Yw7File(File):
         chIds.append(chId)
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER')
         ET.SubElement(xmlChapter, 'ID').text = chId[2:]
-        arcPart = Chapter(title=_('Arcs'), chType=2, chLevel=1)
-        build_chapter_subtree(xmlChapter, arcPart)
+        arcPart = Chapter(title=_('Arcs'), chLevel=1)
+        build_chapter_subtree(xmlChapter, arcPart, chType=2)
         for acId in self.novel.tree.get_children(AC_ROOT):
             chId = create_id(chIds, prefix=CHAPTER_PREFIX)
             chIds.append(chId)
@@ -1808,6 +1875,98 @@ class Yw7File(File):
 
         indent(root)
         self.tree = ET.ElementTree(root)
+
+    def _convert_to_novx(self, text):
+
+        def replace_note(match):
+            noteType = match.group(1)
+            self._noteCounter += 1
+            self._noteNumber += 1
+            noteLabel = f'{self._noteNumber}'
+            if noteType.startswith('fn'):
+                noteClass = 'footnote'
+                if noteType.endswith('*'):
+                    self._noteNumber -= 1
+                    noteLabel = '*'
+            elif noteType.startswith('en'):
+                noteClass = 'endnote'
+            return (f'<note id="ftn{self._noteCounter}" '
+                    f'class="{noteClass}"><note-citation>{noteLabel}</note-citation>'
+                    f'<p>{match.group(2)}</p></note>')
+
+        def replace_comment(match):
+            if self.novel.authorName:
+                creator = self.novel.authorName
+            else:
+                creator = _('unknown')
+            return (f'<comment><creator>{creator}</creator>'
+                    f'<date>{datetime.today().replace(microsecond=0).isoformat()}</date>'
+                    f'<p>{match.group(1)}</p></comment>')
+
+        if not text:
+            text = ''
+        else:
+            text = text.replace('<RTFBRK>', '')
+            text = re.sub('\[\/*[h|c|r|s|u]\d*\]', '', text)
+            for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
+                text = re.sub(f'\<{specialCode} .+?\/{specialCode}\>', '', text)
+
+            xmlReplacements = [
+                ('&', '&amp;'),
+                ('>', '&gt;'),
+                ('<', '&lt;'),
+                ("'", '&apos;'),
+                ('"', '&quot;'),
+                ('\n', '</p><p>'),
+                ('[i]', '<em>'),
+                ('[/i]', '</em>'),
+                ('[b]', '<strong>'),
+                ('[/b]', '</strong>'),
+                ]
+            tags = ['i', 'b']
+            if self.novel.languages is None:
+                self.novel.get_languages()
+            for language in self.novel.languages:
+                tags.append(f'lang={language}')
+                xmlReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
+                xmlReplacements.append((f'[/lang={language}]', '</span>'))
+
+            newlines = []
+            lines = text.split('\n')
+            isOpen = {}
+            opening = {}
+            closing = {}
+            for tag in tags:
+                isOpen[tag] = False
+                opening[tag] = f'[{tag}]'
+                closing[tag] = f'[/{tag}]'
+            for line in lines:
+                for tag in tags:
+                    if isOpen[tag]:
+                        if line.startswith('&gt; '):
+                            line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
+                        else:
+                            line = f'{opening[tag]}{line}'
+                        isOpen[tag] = False
+                    while line.count(opening[tag]) > line.count(closing[tag]):
+                        line = f'{line}{closing[tag]}'
+                        isOpen[tag] = True
+                    while line.count(closing[tag]) > line.count(opening[tag]):
+                        line = f'{opening[tag]}{line}'
+                    line = line.replace(f'{opening[tag]}{closing[tag]}', '')
+                newlines.append(line)
+            text = '\n'.join(newlines).rstrip()
+
+            for nv, od in xmlReplacements:
+                text = text.replace(nv, od)
+
+            if text.find('/*') > 0:
+                text = re.sub('\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
+                text = re.sub('\/\*(.*?)\*\/', replace_comment, text)
+
+            text = f'<p>{text}</p>'
+            text = re.sub('\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
+        return text
 
     def _postprocess_xml_file(self, filePath):
         with open(filePath, 'r', encoding='utf-8') as f:
@@ -1901,18 +2060,18 @@ class Yw7File(File):
             if xmlChapter.find('ChapterType') is not None:
                 yChapterType = xmlChapter.find('ChapterType').text
                 if yChapterType == '2':
-                    prjChapter.chType = 2
+                    prjChapter.chType = 1
                 elif yChapterType == '1':
                     prjChapter.chType = 1
                 elif yUnused:
-                    prjChapter.chType = 3
+                    prjChapter.chType = 1
             else:
                 if xmlChapter.find('Type') is not None:
                     yType = xmlChapter.find('Type').text
                     if yType == '1':
                         prjChapter.chType = 1
                     elif yUnused:
-                        prjChapter.chType = 3
+                        prjChapter.chType = 1
 
             kwVarYw7 = {}
             for xmlChapterFields in xmlChapter.iterfind('Fields'):
@@ -2106,7 +2265,7 @@ class Yw7File(File):
             if xmlScene.find('SceneContent') is not None:
                 sceneContent = xmlScene.find('SceneContent').text
                 if sceneContent is not None:
-                    prjScn.sectionContent = self._convert_to_novelyst(sceneContent)
+                    prjScn.sectionContent = self._convert_to_novx(sceneContent)
 
 
 
@@ -2117,7 +2276,7 @@ class Yw7File(File):
                     if xmlSceneFields.find('Field_SceneType').text == '1':
                         prjScn.scType = 1
                     elif xmlSceneFields.find('Field_SceneType').text == '2':
-                        prjScn.scType = 2
+                        prjScn.scType = 1
 
                 for fieldName in self.SCN_KWVAR_YW7:
                     xmlField = xmlSceneFields.find(fieldName)
@@ -2149,7 +2308,7 @@ class Yw7File(File):
 
             if xmlScene.find('Unused') is not None:
                 if prjScn.scType == 0:
-                    prjScn.scType = 3
+                    prjScn.scType = 1
 
             if xmlScene.find('Status') is not None:
                 prjScn.status = int(xmlScene.find('Status').text)
@@ -2256,97 +2415,10 @@ class Yw7File(File):
                     self.novel.turningPoints[ptId].sectionAssoc = f'{SECTION_PREFIX}{ywScnAssocs[0]}'
             else:
                 if prjScn.tags and self.STAGE_MARKER in prjScn.tags:
-                    prjScn.stageLevel = 2
                     prjScn.scType = 3
                     prjScn.tags = prjScn.tags.remove(self.STAGE_MARKER)
                 scId = f"{SECTION_PREFIX}{ywScId}"
                 self.novel.sections[scId] = prjScn
-
-    def _convert_to_novelyst(self, text):
-
-        def replace_note(match):
-            noteType = match.group(1)
-            self._noteCounter += 1
-            self._noteNumber += 1
-            noteLabel = f'{self._noteNumber}'
-            if noteType.startswith('fn'):
-                noteClass = 'footnote'
-                if noteType.endswith('*'):
-                    self._noteNumber -= 1
-                    noteLabel = '*'
-            elif noteType.startswith('en'):
-                noteClass = 'endnote'
-            return (f'<note id="ftn{self._noteCounter}" '
-                    f'class="{noteClass}"><note-citation>{noteLabel}</note-citation>'
-                    f'<p>{text}</p></note>')
-
-        if not text:
-            text = ''
-        else:
-            text = text.replace('<RTFBRK>', '')
-            text = re.sub('\[\/*[h|c|r|s|u]\d*\]', '', text)
-            for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
-                text = re.sub(f'\<{specialCode} .+?\/{specialCode}\>', '', text)
-
-            odtReplacements = [
-                ('&', '&amp;'),
-                ('>', '&gt;'),
-                ('<', '&lt;'),
-                ("'", '&apos;'),
-                ('"', '&quot;'),
-                ('\n', '</p><p>'),
-                ('[i]', '<em>'),
-                ('[/i]', '</em>'),
-                ('[b]', '<strong>'),
-                ('[/b]', '</strong>'),
-                ]
-            tags = ['i', 'b']
-            if self.novel.languages is None:
-                self.novel.get_languages()
-            for language in self.novel.languages:
-                tags.append(f'lang={language}')
-                odtReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
-                odtReplacements.append((f'[/lang={language}]', '</span>'))
-
-            newlines = []
-            lines = text.split('\n')
-            isOpen = {}
-            opening = {}
-            closing = {}
-            for tag in tags:
-                isOpen[tag] = False
-                opening[tag] = f'[{tag}]'
-                closing[tag] = f'[/{tag}]'
-            for line in lines:
-                for tag in tags:
-                    if isOpen[tag]:
-                        if line.startswith('&gt; '):
-                            line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
-                        else:
-                            line = f'{opening[tag]}{line}'
-                        isOpen[tag] = False
-                    while line.count(opening[tag]) > line.count(closing[tag]):
-                        line = f'{line}{closing[tag]}'
-                        isOpen[tag] = True
-                    while line.count(closing[tag]) > line.count(opening[tag]):
-                        line = f'{opening[tag]}{line}'
-                    line = line.replace(f'{opening[tag]}{closing[tag]}', '')
-                newlines.append(line)
-            text = '\n'.join(newlines).rstrip()
-
-            for nv, od in odtReplacements:
-                text = text.replace(nv, od)
-
-            if text.find('/*') > 0:
-                simpleComment = (f'<comment><creator>{self.novel.authorName}'
-                                 '</creator><p>\\1</p></comment>'
-                                 )
-                text = re.sub('\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
-                text = re.sub('\/\*(.*?)\*\/', simpleComment, text)
-
-            text = f'<p>{text}</p>'
-            text = re.sub('\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
-        return text
 
     def _strip_spaces(self, lines):
         stripped = []
@@ -2370,7 +2442,6 @@ class Yw7File(File):
                 os.replace(f'{ywProject.filePath}.bak', ywProject.filePath)
             raise Error(f'{_("Cannot write file")}: "{norm_path(ywProject.filePath)}".')
 
-from html import unescape
 from datetime import date
 from datetime import time
 
@@ -2421,6 +2492,7 @@ class NovxFile(File):
         self.on_element_change = None
         self.xmlTree = None
         self.wcLog = {}
+        self.wcLogUpdate = {}
 
     def adjust_section_types(self):
         partType = 0
@@ -2429,9 +2501,21 @@ class NovxFile(File):
                 partType = self.novel.chapters[chId].chType
             elif partType != 0 and not self.novel.chapters[chId].isTrash:
                 self.novel.chapters[chId].chType = partType
-            if self.novel.chapters[chId].chType != 0:
-                for scId in self.novel.tree.get_children(chId):
+            for scId in self.novel.tree.get_children(chId):
+                if self.novel.sections[scId].scType < self.novel.chapters[chId].chType:
                     self.novel.sections[scId].scType = self.novel.chapters[chId].chType
+
+    def count_words(self):
+        count = 0
+        totalCount = 0
+        for chId in self.novel.tree.get_children(CH_ROOT):
+            if not self.novel.chapters[chId].isTrash:
+                for scId in self.novel.tree.get_children(chId):
+                    if self.novel.sections[scId].scType < 2:
+                        totalCount += self.novel.sections[scId].wordCount
+                        if self.novel.sections[scId].scType == 0:
+                            count += self.novel.sections[scId].wordCount
+        return count, totalCount
 
     def read(self):
         self.xmlTree = ET.parse(self.filePath)
@@ -2477,6 +2561,15 @@ class NovxFile(File):
                     self.wcLog[wcDate] = [wcCount, wcTotalCount]
 
     def write(self):
+        if self.novel.saveWordCount:
+            newCountInt, newTotalCountInt = self.count_words()
+            newCount = str(newCountInt)
+            newTotalCount = str(newTotalCountInt)
+            today = date.today().isoformat()
+            self.wcLogUpdate[today] = [newCount, newTotalCount]
+            for wcDate in self.wcLogUpdate:
+                self.wcLog[wcDate] = self.wcLogUpdate[wcDate]
+        self.wcLogUpdate = {}
         self.adjust_section_types()
         self.novel.get_languages()
         attrib = {'version':f'{self.MAJOR_VERSION}.{self.MINOR_VERSION}',
@@ -2574,39 +2667,33 @@ class NovxFile(File):
         xmlProject = ET.SubElement(root, 'PROJECT')
         self._build_project_branch(xmlProject)
 
-        if self.novel.chapters:
-            xmlChapters = ET.SubElement(root, 'CHAPTERS')
-            for chId in self.novel.tree.get_children(CH_ROOT):
-                self._build_chapter_branch(xmlChapters, self.novel.chapters[chId], chId)
+        xmlChapters = ET.SubElement(root, 'CHAPTERS')
+        for chId in self.novel.tree.get_children(CH_ROOT):
+            self._build_chapter_branch(xmlChapters, self.novel.chapters[chId], chId)
 
-        if self.novel.characters:
-            xmlCharacters = ET.SubElement(root, 'CHARACTERS')
-            for crId in self.novel.tree.get_children(CR_ROOT):
-                xmlCrt = ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id':crId})
-                self._build_character_branch(xmlCrt, self.novel.characters[crId])
+        xmlCharacters = ET.SubElement(root, 'CHARACTERS')
+        for crId in self.novel.tree.get_children(CR_ROOT):
+            xmlCrt = ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id':crId})
+            self._build_character_branch(xmlCrt, self.novel.characters[crId])
 
-        if self.novel.locations:
-            xmlLocations = ET.SubElement(root, 'LOCATIONS')
-            for lcId in self.novel.tree.get_children(LC_ROOT):
-                xmlLoc = ET.SubElement(xmlLocations, 'LOCATION', attrib={'id':lcId})
-                self._build_location_branch(xmlLoc, self.novel.locations[lcId])
+        xmlLocations = ET.SubElement(root, 'LOCATIONS')
+        for lcId in self.novel.tree.get_children(LC_ROOT):
+            xmlLoc = ET.SubElement(xmlLocations, 'LOCATION', attrib={'id':lcId})
+            self._build_location_branch(xmlLoc, self.novel.locations[lcId])
 
-        if self.novel.items:
-            xmlItems = ET.SubElement(root, 'ITEMS')
-            for itId in self.novel.tree.get_children(IT_ROOT):
-                xmlItm = ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId})
-                self._build_item_branch(xmlItm, self.novel.items[itId])
+        xmlItems = ET.SubElement(root, 'ITEMS')
+        for itId in self.novel.tree.get_children(IT_ROOT):
+            xmlItm = ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId})
+            self._build_item_branch(xmlItm, self.novel.items[itId])
 
-        if self.novel.arcs:
-            xmlArcs = ET.SubElement(root, 'ARCS')
-            for acId in self.novel.tree.get_children(AC_ROOT):
-                self._build_arc_branch(xmlArcs, self.novel.arcs[acId], acId)
+        xmlArcs = ET.SubElement(root, 'ARCS')
+        for acId in self.novel.tree.get_children(AC_ROOT):
+            self._build_arc_branch(xmlArcs, self.novel.arcs[acId], acId)
 
-        if self.novel.projectNotes:
-            xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
-            for pnId in self.novel.tree.get_children(PN_ROOT):
-                xmlProjectnote = ET.SubElement(xmlProjectnotes, 'PROJECTNOTE', attrib={'id':pnId})
-                self._build_projectnotes_branch(xmlProjectnote, self.novel.projectNotes[pnId])
+        xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
+        for pnId in self.novel.tree.get_children(PN_ROOT):
+            xmlProjectnote = ET.SubElement(xmlProjectnotes, 'PROJECTNOTE', attrib={'id':pnId})
+            self._build_projectnotes_branch(xmlProjectnote, self.novel.projectNotes[pnId])
 
         if self.wcLog:
             xmlWcLog = ET.SubElement(root, 'PROGRESS')
@@ -2712,9 +2799,7 @@ class NovxFile(File):
             xmlProjectnote.append(text_to_xml_element('Desc', projectNote.desc))
 
     def _build_section_branch(self, xmlSection, prjScn):
-        if prjScn.stageLevel is not None:
-            xmlSection.set('stageLevel', str(prjScn.stageLevel))
-        elif prjScn.scType:
+        if prjScn.scType:
             xmlSection.set('type', str(prjScn.scType))
         if prjScn.status > 1:
             xmlSection.set('status', str(prjScn.status))
@@ -2827,11 +2912,11 @@ class NovxFile(File):
             for xmlChapter in root.find('CHAPTERS'):
                 chId = xmlChapter.attrib['id']
                 self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
-                chType = xmlChapter.get('type', None)
-                if chType in ('1', '2', '3'):
-                    self.novel.chapters[chId].chType = int(chType)
+                typeStr = xmlChapter.get('type', '0')
+                if typeStr in ('0', '1'):
+                    self.novel.chapters[chId].chType = int(typeStr)
                 else:
-                    self.novel.chapters[chId].chType = 0
+                    self.novel.chapters[chId].chType = 1
                 chLevel = xmlChapter.get('level', None)
                 if chLevel == '1':
                     self.novel.chapters[chId].chLevel = 1
@@ -2846,7 +2931,7 @@ class NovxFile(File):
                     for xmlSection in xmlChapter.iterfind('SECTION'):
                         scId = xmlSection.attrib['id']
                         self._read_section(xmlSection, scId)
-                        if self.novel.chapters[chId].chType > 0:
+                        if self.novel.sections[scId].scType < self.novel.chapters[chId].chType:
                             self.novel.sections[scId].scType = self.novel.chapters[chId].chType
                         self.novel.tree.append(chId, scId)
         except TypeError:
@@ -2948,17 +3033,11 @@ class NovxFile(File):
 
     def _read_section(self, xmlSection, scId):
         self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
-        stageLevel = xmlSection.get('stageLevel', None)
-        if stageLevel in ('1', '2'):
-            self.novel.sections[scId].stageLevel = int(stageLevel)
-            self.novel.sections[scId].scType = 3
+        typeStr = xmlSection.get('type', '0')
+        if typeStr in ('0', '1', '2', '3'):
+            self.novel.sections[scId].scType = int(typeStr)
         else:
-            self.novel.sections[scId].stageLevel = None
-            scType = xmlSection.get('type', None)
-            if scType in ('1', '2', '3'):
-                self.novel.sections[scId].scType = int(scType)
-            else:
-                self.novel.sections[scId].scType = 0
+            self.novel.sections[scId].scType = 1
         status = xmlSection.get('status', None)
         if status in ('2', '3', '4', '5'):
             self.novel.sections[scId].status = int(status)
