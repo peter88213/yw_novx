@@ -20,7 +20,7 @@ TARGET_FILE = f'{BUILD}yw2novx.py'
 
 
 def main():
-    inliner.run(SOURCE_FILE, TARGET_FILE, 'novxlib-Alpha', '../../novxlib-Alpha/src/')
+    inliner.run(SOURCE_FILE, TARGET_FILE, 'novxlib', '../../novxlib-Alpha/src/')
     print('Done.')
 
 

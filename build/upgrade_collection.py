@@ -52,29 +52,33 @@ __all__ = [
     'CHARACTER_PREFIX',
     'LOCATION_PREFIX',
     'ITEM_PREFIX',
+    'PRJ_NOTE_PREFIX',
     'CH_ROOT',
     'AC_ROOT',
     'CR_ROOT',
     'LC_ROOT',
     'IT_ROOT',
+    'PN_ROOT',
     'BRF_SYNOPSIS_SUFFIX',
     'CHAPTERS_SUFFIX',
+    'CHARACTER_REPORT_SUFFIX',
     'CHARACTERS_SUFFIX',
     'CHARLIST_SUFFIX',
     'DATA_SUFFIX',
+    'ITEM_REPORT_SUFFIX',
     'ITEMLIST_SUFFIX',
     'ITEMS_SUFFIX',
+    'LOCATION_REPORT_SUFFIX',
     'LOCATIONS_SUFFIX',
     'LOCLIST_SUFFIX',
     'MANUSCRIPT_SUFFIX',
-    'NOTES_SUFFIX',
     'PARTS_SUFFIX',
     'PLOTLIST_SUFFIX',
     'PLOT_SUFFIX',
+    'PROJECTNOTES_SUFFIX',
     'PROOF_SUFFIX',
     'SECTIONLIST_SUFFIX',
     'SECTIONS_SUFFIX',
-    'TODO_SUFFIX',
     'XREF_SUFFIX',
     'WEEKDAYS',
     ]
@@ -86,30 +90,34 @@ ARC_POINT_PREFIX = 'ap'
 CHARACTER_PREFIX = 'cr'
 LOCATION_PREFIX = 'lc'
 ITEM_PREFIX = 'it'
+PRJ_NOTE_PREFIX = 'pn'
 CH_ROOT = f'{ROOT_PREFIX}{CHAPTER_PREFIX}'
 AC_ROOT = f'{ROOT_PREFIX}{ARC_PREFIX}'
 CR_ROOT = f'{ROOT_PREFIX}{CHARACTER_PREFIX}'
 LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
 IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
+PN_ROOT = f'{ROOT_PREFIX}{PRJ_NOTE_PREFIX}'
 
 BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
 CHAPTERS_SUFFIX = '_chapters_tmp'
+CHARACTER_REPORT_SUFFIX = '_character_report'
 CHARACTERS_SUFFIX = '_characters_tmp'
 CHARLIST_SUFFIX = '_charlist_tmp'
 DATA_SUFFIX = '_data'
+ITEM_REPORT_SUFFIX = '_item_report'
 ITEMLIST_SUFFIX = '_itemlist_tmp'
 ITEMS_SUFFIX = '_items_tmp'
+LOCATION_REPORT_SUFFIX = '_location_report'
 LOCATIONS_SUFFIX = '_locations_tmp'
 LOCLIST_SUFFIX = '_loclist_tmp'
 MANUSCRIPT_SUFFIX = '_manuscript_tmp'
-NOTES_SUFFIX = '_notes_tmp'
 PARTS_SUFFIX = '_parts_tmp'
 PLOTLIST_SUFFIX = '_plotlist'
 PLOT_SUFFIX = '_plot'
+PROJECTNOTES_SUFFIX = '_projectnote_report'
 PROOF_SUFFIX = '_proof_tmp'
 SECTIONLIST_SUFFIX = '_sectionlist_tmp'
 SECTIONS_SUFFIX = '_sections_tmp'
-TODO_SUFFIX = '_todo_tmp'
 XREF_SUFFIX = '_xref'
 
 
@@ -123,7 +131,7 @@ try:
 except:
     CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
 try:
-    t = gettext.translation('novelyst', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+    t = gettext.translation('noveltree', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
     _ = t.gettext
 except:
 
@@ -211,7 +219,7 @@ class BasicElement:
         pass
 
 
-LANGUAGE_TAG = re.compile('\[lang=(.*?)\]')
+LANGUAGE_TAG = re.compile('\<span xml\:lang=\"(.*?)\"\>')
 
 
 class Novel(BasicElement):
@@ -616,12 +624,6 @@ class File(ABC):
     def write(self):
         raise NotImplementedError
 
-    def _convert_from_novelyst(self, text:str, quick:bool=False):
-        return text.rstrip()
-
-    def _convert_to_novelyst(self, text:str):
-        return text.rstrip()
-
 
 
 class Arc(BasicElement):
@@ -899,8 +901,9 @@ def create_id(elements, prefix=''):
 from datetime import datetime, date, timedelta
 
 
-ADDITIONAL_WORD_LIMITS = re.compile('--|—|–')
-NO_WORD_LIMITS = re.compile('\[.+?\]|\/\*.+?\*\/|-|^\>', re.MULTILINE)
+ADDITIONAL_WORD_LIMITS = re.compile('--|—|–|\<\/p\>')
+
+NO_WORD_LIMITS = re.compile('\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>')
 
 
 class Section(BasicElement):
@@ -925,7 +928,6 @@ class Section(BasicElement):
             lastsMinutes=None,
             lastsHours=None,
             lastsDays=None,
-            scMode=None,
             stageLevel=None,
             characters=None,
             locations=None,
@@ -958,7 +960,6 @@ class Section(BasicElement):
         self._lastsHours = lastsHours
         self._lastsDays = lastsDays
 
-        self._scMode = scMode
         self._stageLevel = stageLevel
 
         self._characters = characters
@@ -974,11 +975,16 @@ class Section(BasicElement):
 
     @sectionContent.setter
     def sectionContent(self, text):
-        self._sectionContent = text
-        text = ADDITIONAL_WORD_LIMITS.sub(' ', text)
-        text = NO_WORD_LIMITS.sub('', text)
-        wordList = text.split()
-        self.wordCount = len(wordList)
+        if self._sectionContent != text:
+            self._sectionContent = text
+            if text is not None:
+                text = ADDITIONAL_WORD_LIMITS.sub(' ', text)
+                text = NO_WORD_LIMITS.sub('', text)
+                wordList = text.split()
+                self.wordCount = len(wordList)
+            else:
+                self.wordCount = 0
+            self.on_element_change()
 
     @property
     def scType(self):
@@ -1087,7 +1093,6 @@ class Section(BasicElement):
                     pass
                 else:
                     self._date = newVal
-                    self._day = None
                     self.on_element_change()
 
     @property
@@ -1108,9 +1113,6 @@ class Section(BasicElement):
     def day(self, newVal):
         if self._day != newVal:
             self._day = newVal
-            if self._day:
-                self._date = None
-                self.weekDay = None
             self.on_element_change()
 
     @property
@@ -1141,16 +1143,6 @@ class Section(BasicElement):
     def lastsDays(self, newVal):
         if self._lastsDays != newVal:
             self._lastsDays = newVal
-            self.on_element_change()
-
-    @property
-    def scMode(self):
-        return self._scMode
-
-    @scMode.setter
-    def scMode(self, newVal):
-        if self._scMode != newVal:
-            self._scMode = newVal
             self.on_element_change()
 
     @property
@@ -1241,24 +1233,27 @@ class Section(BasicElement):
                     pass
         return endDate, endTime, endDay
 
-    def day_to_specific_date(self, referenceDate):
+    def day_to_date(self, referenceDate):
         if not self._date:
             try:
                 deltaDays = timedelta(days=int(self._day))
                 refDate = date.fromisoformat(referenceDate)
-                self.date = refDate + deltaDays.isoformat()
+                self.date = date.isoformat(refDate + deltaDays)
+                self._day = None
             except:
                 self.date = ''
                 return False
 
         return True
 
-    def specific_date_to_day(self, referenceDate):
+    def date_to_day(self, referenceDate):
         if not self._day:
             try:
                 sectionDate = date.fromisoformat(self._date)
                 referenceDate = date.fromisoformat(referenceDate)
                 self.day = str((sectionDate - referenceDate).days)
+                self._date = None
+                self.weekDay = None
             except:
                 self.day = ''
                 return False
@@ -1368,6 +1363,9 @@ class Yw7File(File):
     def read(self):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
+
+        self._noteCounter = 0
+        self._noteNumber = 0
         self.tree = ET.parse(self.filePath)
         self._ywApIds = []
         self.wcLog = {}
@@ -1405,6 +1403,8 @@ class Yw7File(File):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
 
+        self._noteCounter = 0
+        self._noteNumber = 0
         if self.novel.languages is None:
             self.novel.get_languages()
         self._build_element_tree()
@@ -1468,8 +1468,6 @@ class Yw7File(File):
                 return
 
             ET.SubElement(xmlScene, 'SceneContent').text = prjScn.sectionContent
-            if prjScn.scMode:
-                ET.SubElement(xmlSceneFields[scId], 'Field_SceneMode').text = str(prjScn.scMode)
             if prjScn.notes:
                 ET.SubElement(xmlScene, 'Notes').text = prjScn.notes
             if scTags:
@@ -1662,6 +1660,13 @@ class Yw7File(File):
                 if fields[field]:
                     ET.SubElement(xmlProjectFields, field).text = fields[field]
 
+        def build_prjNote_subtree(xmlProjectnote, projectNote):
+            if projectNote.title is not None:
+                ET.SubElement(xmlProjectnote, 'Title').text = projectNote.title
+
+            if projectNote.desc is not None:
+                ET.SubElement(xmlProjectnote, 'Desc').text = projectNote.desc
+
         root = ET.Element('YWRITER7')
         xmlProject = ET.SubElement(root, 'PROJECT')
         xmlLocations = ET.SubElement(root, 'LOCATIONS')
@@ -1754,6 +1759,13 @@ class Yw7File(File):
                 xmlScnList = ET.SubElement(xmlChapter, 'Scenes')
                 for tpId in srtScenes:
                     ET.SubElement(xmlScnList, 'ScID').text = newScIds[tpId][2:]
+
+        if self.novel.tree.get_children(PN_ROOT):
+            xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
+            for pnId in self.novel.tree.get_children(PN_ROOT):
+                xmlProjectnote = ET.SubElement(xmlProjectnotes, 'PROJECTNOTE')
+                ET.SubElement(xmlProjectnote, 'ID').text = pnId[2:]
+                build_prjNote_subtree(xmlProjectnote, self.novel.projectNotes[pnId])
 
         sectionArcs = {}
         sectionAssoc = {}
@@ -2047,17 +2059,15 @@ class Yw7File(File):
 
     def _read_projectnotes(self, root):
         if root.find('PROJECTNOTES') is not None:
-            chId = create_id(self.novel.chapters, prefix=CHAPTER_PREFIX)
-            self.novel.chapters[chId] = Chapter(title=_('Project notes'), chLevel=1, chType=1)
-            self.novel.tree.append(CH_ROOT, chId)
             for xmlProjectnote in root.find('PROJECTNOTES'):
-                scId = create_id(self.novel.sections, prefix=SECTION_PREFIX)
-                self.novel.tree.append(chId, scId)
-                self.novel.sections[scId] = Section(scType=1, scPacing=0, status=0)
-                if xmlProjectnote.find('Title') is not None:
-                    self.novel.sections[scId].title = xmlProjectnote.find('Title').text
-                if xmlProjectnote.find('Desc') is not None:
-                    self.novel.sections[scId].desc = xmlProjectnote.find('Desc').text
+                if xmlProjectnote.find('ID') is not None:
+                    pnId = f"{PRJ_NOTE_PREFIX}{xmlProjectnote.find('ID').text}"
+                    self.novel.tree.append(PN_ROOT, pnId)
+                    self.novel.projectNotes[pnId] = BasicElement()
+                    if xmlProjectnote.find('Title') is not None:
+                        self.novel.projectNotes[pnId].title = xmlProjectnote.find('Title').text
+                    if xmlProjectnote.find('Desc') is not None:
+                        self.novel.projectNotes[pnId].desc = xmlProjectnote.find('Desc').text
 
     def _read_projectvars(self, root):
         try:
@@ -2096,7 +2106,7 @@ class Yw7File(File):
             if xmlScene.find('SceneContent') is not None:
                 sceneContent = xmlScene.find('SceneContent').text
                 if sceneContent is not None:
-                    prjScn.sectionContent = self._remove_inline_code(sceneContent)
+                    prjScn.sectionContent = self._convert_to_novelyst(sceneContent)
 
 
 
@@ -2129,12 +2139,6 @@ class Yw7File(File):
 
             ywScnAssocs = string_to_list(kwVarYw7.get('Field_SceneAssoc', ''))
             prjScn.turningPoints = [f'{ARC_POINT_PREFIX}{turningPoint}' for turningPoint in ywScnAssocs]
-
-            scMode = kwVarYw7.get('Field_SceneMode', None)
-            try:
-                prjScn.scMode = int(scMode)
-            except:
-                prjScn.scMode = None
 
             if kwVarYw7.get('Field_CustomAR', None) is not None:
                 prjScn.scPacing = 2
@@ -2258,16 +2262,91 @@ class Yw7File(File):
                 scId = f"{SECTION_PREFIX}{ywScId}"
                 self.novel.sections[scId] = prjScn
 
-    def _remove_inline_code(self, text):
-        if text:
+    def _convert_to_novelyst(self, text):
+
+        def replace_note(match):
+            noteType = match.group(1)
+            self._noteCounter += 1
+            self._noteNumber += 1
+            noteLabel = f'{self._noteNumber}'
+            if noteType.startswith('fn'):
+                noteClass = 'footnote'
+                if noteType.endswith('*'):
+                    self._noteNumber -= 1
+                    noteLabel = '*'
+            elif noteType.startswith('en'):
+                noteClass = 'endnote'
+            return (f'<note id="ftn{self._noteCounter}" '
+                    f'class="{noteClass}"><note-citation>{noteLabel}</note-citation>'
+                    f'<p>{text}</p></note>')
+
+        if not text:
+            text = ''
+        else:
             text = text.replace('<RTFBRK>', '')
             text = re.sub('\[\/*[h|c|r|s|u]\d*\]', '', text)
-            YW_SPECIAL_CODES = ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg')
-            for specialCode in YW_SPECIAL_CODES:
+            for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
                 text = re.sub(f'\<{specialCode} .+?\/{specialCode}\>', '', text)
-        else:
-            text = ''
-        return text.strip()
+
+            odtReplacements = [
+                ('&', '&amp;'),
+                ('>', '&gt;'),
+                ('<', '&lt;'),
+                ("'", '&apos;'),
+                ('"', '&quot;'),
+                ('\n', '</p><p>'),
+                ('[i]', '<em>'),
+                ('[/i]', '</em>'),
+                ('[b]', '<strong>'),
+                ('[/b]', '</strong>'),
+                ]
+            tags = ['i', 'b']
+            if self.novel.languages is None:
+                self.novel.get_languages()
+            for language in self.novel.languages:
+                tags.append(f'lang={language}')
+                odtReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
+                odtReplacements.append((f'[/lang={language}]', '</span>'))
+
+            newlines = []
+            lines = text.split('\n')
+            isOpen = {}
+            opening = {}
+            closing = {}
+            for tag in tags:
+                isOpen[tag] = False
+                opening[tag] = f'[{tag}]'
+                closing[tag] = f'[/{tag}]'
+            for line in lines:
+                for tag in tags:
+                    if isOpen[tag]:
+                        if line.startswith('&gt; '):
+                            line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
+                        else:
+                            line = f'{opening[tag]}{line}'
+                        isOpen[tag] = False
+                    while line.count(opening[tag]) > line.count(closing[tag]):
+                        line = f'{line}{closing[tag]}'
+                        isOpen[tag] = True
+                    while line.count(closing[tag]) > line.count(opening[tag]):
+                        line = f'{opening[tag]}{line}'
+                    line = line.replace(f'{opening[tag]}{closing[tag]}', '')
+                newlines.append(line)
+            text = '\n'.join(newlines).rstrip()
+
+            for nv, od in odtReplacements:
+                text = text.replace(nv, od)
+
+            if text.find('/*') > 0:
+                simpleComment = (f'<comment><creator>{self.novel.authorName}'
+                                 '</creator><p>\\1</p></comment>'
+                                 )
+                text = re.sub('\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
+                text = re.sub('\/\*(.*?)\*\/', simpleComment, text)
+
+            text = f'<p>{text}</p>'
+            text = re.sub('\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
+        return text
 
     def _strip_spaces(self, lines):
         stripped = []
@@ -2294,77 +2373,34 @@ class Yw7File(File):
 from html import unescape
 from datetime import date
 from datetime import time
-from xml import sax
+
+__all__ = [
+    'get_element_text',
+    'text_to_xml_element',
+    'xml_element_to_text',
+    ]
 
 
-class NovxPParser(sax.ContentHandler):
-    NOTE_TYPES = [
-        '',
-        '@fn*',
-        '@fn',
-        '@en',
-        ]
+def get_element_text(parent, tag, default=None):
+    if parent.find(tag) is not None:
+        return parent.find(tag).text
+    else:
+        return default
 
-    def __init__(self):
-        super().__init__()
-        self.textList = None
-        self._paragraph = None
-        self._span = None
 
-    def feed(self, xmlString):
-        self.textList = []
-        if xmlString:
-            self._paragraph = False
-            self._span = []
-            sax.parseString(xmlString, self)
+def text_to_xml_element(tag, text):
+    xmlElement = ET.Element(tag)
+    for line in text.split('\n'):
+        ET.SubElement(xmlElement, 'p').text = line
+    return xmlElement
 
-    def characters(self, content):
-        if self._paragraph:
-            self.textList.append(content)
 
-    def endElement(self, name):
-        if name in ('p', 'blockquote'):
-            while self._span:
-                self.textList.append(self._span.pop())
-            self.textList.append('\n')
-            self._paragraph = False
-        elif name == 'em':
-            self.textList.append('[/i]')
-        elif name == 'strong':
-            self.textList.append('[/b]')
-        elif name == 'span':
-            if self._span:
-                self.textList.append(self._span.pop())
-        elif name in ('comment', 'note'):
-            self.textList.append('*/')
-
-    def startElement(self, name, attrs):
-        xmlAttributes = {}
-        for attribute in attrs.items():
-            attrKey, attrValue = attribute
-            xmlAttributes[attrKey] = attrValue
-        locale = xmlAttributes.get('xml:lang', None)
-        if name == 'p':
-            self._paragraph = True
-        elif name == 'em':
-            self.textList.append('[i]')
-        elif name == 'strong':
-            self.textList.append('[b]')
-        elif name == 'span':
-            if locale is not None:
-                self._span.append(f'[/lang={locale}]')
-                self.textList.append(f'[lang={locale}]')
-        elif name == 'blockquote':
-            self.textList.append('> ')
-            self._paragraph = True
-        elif name == 'note':
-            self.textList.append('/*')
-            try:
-                typeIndex = int(xmlAttributes['type'])
-            except:
-                pass
-            else:
-                self.textList.append(self.NOTE_TYPES[typeIndex])
+def xml_element_to_text(xmlElement):
+    lines = []
+    if xmlElement:
+        for paragraph in xmlElement.iterfind('p'):
+            lines.append(''.join(t for t in paragraph.itertext()))
+    return '\n'.join(lines)
 
 
 
@@ -2426,10 +2462,9 @@ class NovxFile(File):
         self._read_locations(xmlRoot)
         self._read_items(xmlRoot)
         self._read_characters(xmlRoot)
-        xmlChapters = xmlRoot.find('CHAPTERS')
-        self._read_chapters(xmlChapters)
-        xmlArcs = xmlRoot.find('ARCS')
-        self._read_arcs(xmlArcs)
+        self._read_chapters(xmlRoot)
+        self._read_arcs(xmlRoot)
+        self._read_projectnotes(xmlRoot)
         self.adjust_section_types()
 
         xmlWclog = xmlRoot.find('PROGRESS')
@@ -2457,11 +2492,11 @@ class NovxFile(File):
     def _build_arc_branch(self, xmlArcs, prjArc, acId):
         xmlArc = ET.SubElement(xmlArcs, 'ARC', attrib={'id':acId})
         if prjArc.title:
-            ET.SubElement(xmlArc, 'Title').text = self._convert_from_novelyst(prjArc.title, quick=True)
+            ET.SubElement(xmlArc, 'Title').text = prjArc.title
         if prjArc.shortName:
-            ET.SubElement(xmlArc, 'ShortName').text = self._convert_from_novelyst(prjArc.shortName, quick=True)
+            ET.SubElement(xmlArc, 'ShortName').text = prjArc.shortName
         if prjArc.desc:
-            ET.SubElement(xmlArc, 'Desc').text = self._convert_from_novelyst(prjArc.desc)
+            xmlArc.append(text_to_xml_element('Desc', prjArc.desc))
 
         if prjArc.sections:
             attrib = {'ids':' '.join(prjArc.sections)}
@@ -2475,11 +2510,11 @@ class NovxFile(File):
 
     def _build_turningPoint_branch(self, xmlPoint, prjTurningPoint):
         if prjTurningPoint.title:
-            ET.SubElement(xmlPoint, 'Title').text = self._convert_from_novelyst(prjTurningPoint.title, quick=True)
+            ET.SubElement(xmlPoint, 'Title').text = prjTurningPoint.title
         if prjTurningPoint.desc:
-            ET.SubElement(xmlPoint, 'Desc').text = self._convert_from_novelyst(prjTurningPoint.desc)
+            xmlPoint.append(text_to_xml_element('Desc', prjTurningPoint.desc))
         if prjTurningPoint.notes:
-            ET.SubElement(xmlPoint, 'Notes').text = self._convert_from_novelyst(prjTurningPoint.notes)
+            xmlPoint.append(text_to_xml_element('Notes', prjTurningPoint.notes))
 
         if prjTurningPoint.sectionAssoc:
             ET.SubElement(xmlPoint, 'Section', attrib={'id': prjTurningPoint.sectionAssoc})
@@ -2495,9 +2530,9 @@ class NovxFile(File):
         if prjChp.noNumber:
             xmlChapter.set('noNumber', '1')
         if prjChp.title:
-            ET.SubElement(xmlChapter, 'Title').text = self._convert_from_novelyst(prjChp.title, quick=True)
+            ET.SubElement(xmlChapter, 'Title').text = prjChp.title
         if prjChp.desc:
-            ET.SubElement(xmlChapter, 'Desc').text = self._convert_from_novelyst(prjChp.desc)
+            xmlChapter.append(text_to_xml_element('Desc', prjChp.desc))
         for scId in self.novel.tree.get_children(chId):
             xmlSection = ET.SubElement(xmlChapter, 'SECTION', attrib={'id':scId})
             self._build_section_branch(xmlSection, self.novel.sections[scId])
@@ -2507,22 +2542,22 @@ class NovxFile(File):
         if prjCrt.isMajor:
             xmlCrt.set('major', '1')
         if prjCrt.title:
-            ET.SubElement(xmlCrt, 'Title').text = self._convert_from_novelyst(prjCrt.title, quick=True)
+            ET.SubElement(xmlCrt, 'Title').text = prjCrt.title
         if prjCrt.fullName:
-            ET.SubElement(xmlCrt, 'FullName').text = self._convert_from_novelyst(prjCrt.fullName, quick=True)
+            ET.SubElement(xmlCrt, 'FullName').text = prjCrt.fullName
         if prjCrt.aka:
-            ET.SubElement(xmlCrt, 'Aka').text = self._convert_from_novelyst(prjCrt.aka, quick=True)
+            ET.SubElement(xmlCrt, 'Aka').text = prjCrt.aka
         if prjCrt.desc:
-            ET.SubElement(xmlCrt, 'Desc').text = self._convert_from_novelyst(prjCrt.desc)
+            xmlCrt.append(text_to_xml_element('Desc', prjCrt.desc))
         if prjCrt.bio:
-            ET.SubElement(xmlCrt, 'Bio').text = self._convert_from_novelyst(prjCrt.bio)
+            xmlCrt.append(text_to_xml_element('Bio', prjCrt.bio))
         if prjCrt.goals:
-            ET.SubElement(xmlCrt, 'Goals').text = self._convert_from_novelyst(prjCrt.goals)
+            xmlCrt.append(text_to_xml_element('Goals', prjCrt.goals))
         if prjCrt.notes:
-            ET.SubElement(xmlCrt, 'Notes').text = self._convert_from_novelyst(prjCrt.notes)
+            xmlCrt.append(text_to_xml_element('Notes', prjCrt.notes))
         tagStr = list_to_string(prjCrt.tags)
         if tagStr:
-            ET.SubElement(xmlCrt, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
+            ET.SubElement(xmlCrt, 'Tags').text = tagStr
         if prjCrt.links:
             for path in prjCrt.links:
                 xmlLink = ET.SubElement(xmlCrt, 'Link')
@@ -2539,28 +2574,39 @@ class NovxFile(File):
         xmlProject = ET.SubElement(root, 'PROJECT')
         self._build_project_branch(xmlProject)
 
-        xmlChapters = ET.SubElement(root, 'CHAPTERS')
-        for chId in self.novel.tree.get_children(CH_ROOT):
-            self._build_chapter_branch(xmlChapters, self.novel.chapters[chId], chId)
+        if self.novel.chapters:
+            xmlChapters = ET.SubElement(root, 'CHAPTERS')
+            for chId in self.novel.tree.get_children(CH_ROOT):
+                self._build_chapter_branch(xmlChapters, self.novel.chapters[chId], chId)
 
-        xmlCharacters = ET.SubElement(root, 'CHARACTERS')
-        for crId in self.novel.tree.get_children(CR_ROOT):
-            xmlCrt = ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id':crId})
-            self._build_character_branch(xmlCrt, self.novel.characters[crId])
+        if self.novel.characters:
+            xmlCharacters = ET.SubElement(root, 'CHARACTERS')
+            for crId in self.novel.tree.get_children(CR_ROOT):
+                xmlCrt = ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id':crId})
+                self._build_character_branch(xmlCrt, self.novel.characters[crId])
 
-        xmlLocations = ET.SubElement(root, 'LOCATIONS')
-        for lcId in self.novel.tree.get_children(LC_ROOT):
-            xmlLoc = ET.SubElement(xmlLocations, 'LOCATION', attrib={'id':lcId})
-            self._build_location_branch(xmlLoc, self.novel.locations[lcId])
+        if self.novel.locations:
+            xmlLocations = ET.SubElement(root, 'LOCATIONS')
+            for lcId in self.novel.tree.get_children(LC_ROOT):
+                xmlLoc = ET.SubElement(xmlLocations, 'LOCATION', attrib={'id':lcId})
+                self._build_location_branch(xmlLoc, self.novel.locations[lcId])
 
-        xmlItems = ET.SubElement(root, 'ITEMS')
-        for itId in self.novel.tree.get_children(IT_ROOT):
-            xmlItm = ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId})
-            self._build_item_branch(xmlItm, self.novel.items[itId])
+        if self.novel.items:
+            xmlItems = ET.SubElement(root, 'ITEMS')
+            for itId in self.novel.tree.get_children(IT_ROOT):
+                xmlItm = ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId})
+                self._build_item_branch(xmlItm, self.novel.items[itId])
 
-        xmlArcs = ET.SubElement(root, 'ARCS')
-        for acId in self.novel.tree.get_children(AC_ROOT):
-            self._build_arc_branch(xmlArcs, self.novel.arcs[acId], acId)
+        if self.novel.arcs:
+            xmlArcs = ET.SubElement(root, 'ARCS')
+            for acId in self.novel.tree.get_children(AC_ROOT):
+                self._build_arc_branch(xmlArcs, self.novel.arcs[acId], acId)
+
+        if self.novel.projectNotes:
+            xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
+            for pnId in self.novel.tree.get_children(PN_ROOT):
+                xmlProjectnote = ET.SubElement(xmlProjectnotes, 'PROJECTNOTE', attrib={'id':pnId})
+                self._build_projectnotes_branch(xmlProjectnote, self.novel.projectNotes[pnId])
 
         if self.wcLog:
             xmlWcLog = ET.SubElement(root, 'PROGRESS')
@@ -2580,14 +2626,14 @@ class NovxFile(File):
 
     def _build_item_branch(self, xmlItm, prjItm):
         if prjItm.title:
-            ET.SubElement(xmlItm, 'Title').text = self._convert_from_novelyst(prjItm.title, quick=True)
+            ET.SubElement(xmlItm, 'Title').text = prjItm.title
         if prjItm.aka:
-            ET.SubElement(xmlItm, 'Aka').text = self._convert_from_novelyst(prjItm.aka, quick=True)
+            ET.SubElement(xmlItm, 'Aka').text = prjItm.aka
         if prjItm.desc:
-            ET.SubElement(xmlItm, 'Desc').text = self._convert_from_novelyst(prjItm.desc)
+            xmlItm.append(text_to_xml_element('Desc', prjItm.desc))
         tagStr = list_to_string(prjItm.tags)
         if tagStr:
-            ET.SubElement(xmlItm, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
+            ET.SubElement(xmlItm, 'Tags').text = tagStr
         if prjItm.links:
             for path in prjItm.links:
                 xmlLink = ET.SubElement(xmlItm, 'Link')
@@ -2597,14 +2643,14 @@ class NovxFile(File):
 
     def _build_location_branch(self, xmlLoc, prjLoc):
         if prjLoc.title:
-            ET.SubElement(xmlLoc, 'Title').text = self._convert_from_novelyst(prjLoc.title, quick=True)
+            ET.SubElement(xmlLoc, 'Title').text = prjLoc.title
         if prjLoc.aka:
-            ET.SubElement(xmlLoc, 'Aka').text = self._convert_from_novelyst(prjLoc.aka, quick=True)
+            ET.SubElement(xmlLoc, 'Aka').text = prjLoc.aka
         if prjLoc.desc:
-            ET.SubElement(xmlLoc, 'Desc').text = self._convert_from_novelyst(prjLoc.desc)
+            xmlLoc.append(text_to_xml_element('Desc', prjLoc.desc))
         tagStr = list_to_string(prjLoc.tags)
         if tagStr:
-            ET.SubElement(xmlLoc, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
+            ET.SubElement(xmlLoc, 'Tags').text = tagStr
         if prjLoc.links:
             for path in prjLoc.links:
                 xmlLink = ET.SubElement(xmlLoc, 'Link')
@@ -2629,35 +2675,41 @@ class NovxFile(File):
             xmlProject.set('workPhase', str(self.novel.workPhase))
 
         if self.novel.title:
-            ET.SubElement(xmlProject, 'Title').text = self._convert_from_novelyst(self.novel.title, quick=True)
+            ET.SubElement(xmlProject, 'Title').text = self.novel.title
         if self.novel.authorName:
-            ET.SubElement(xmlProject, 'Author').text = self._convert_from_novelyst(self.novel.authorName, quick=True)
+            ET.SubElement(xmlProject, 'Author').text = self.novel.authorName
         if self.novel.desc:
-            ET.SubElement(xmlProject, 'Desc').text = self._convert_from_novelyst(self.novel.desc)
+            xmlProject.append(text_to_xml_element('Desc', self.novel.desc))
         if self.novel.chapterHeadingPrefix:
-            ET.SubElement(xmlProject, 'ChapterHeadingPrefix').text = self._convert_from_novelyst(self.novel.chapterHeadingPrefix, quick=True)
+            ET.SubElement(xmlProject, 'ChapterHeadingPrefix').text = self.novel.chapterHeadingPrefix
         if self.novel.chapterHeadingSuffix:
-            ET.SubElement(xmlProject, 'ChapterHeadingSuffix').text = self._convert_from_novelyst(self.novel.chapterHeadingSuffix, quick=True)
+            ET.SubElement(xmlProject, 'ChapterHeadingSuffix').text = self.novel.chapterHeadingSuffix
         if self.novel.partHeadingPrefix:
-            ET.SubElement(xmlProject, 'PartHeadingPrefix').text = self._convert_from_novelyst(self.novel.partHeadingPrefix, quick=True)
+            ET.SubElement(xmlProject, 'PartHeadingPrefix').text = self.novel.partHeadingPrefix
         if self.novel.partHeadingSuffix:
-            ET.SubElement(xmlProject, 'PartHeadingSuffix').text = self._convert_from_novelyst(self.novel.partHeadingSuffix, quick=True)
+            ET.SubElement(xmlProject, 'PartHeadingSuffix').text = self.novel.partHeadingSuffix
         if self.novel.customGoal:
-            ET.SubElement(xmlProject, 'CustomGoal').text = self._convert_from_novelyst(self.novel.customGoal, quick=True)
+            ET.SubElement(xmlProject, 'CustomGoal').text = self.novel.customGoal
         if self.novel.customConflict:
-            ET.SubElement(xmlProject, 'CustomConflict').text = self._convert_from_novelyst(self.novel.customConflict, quick=True)
+            ET.SubElement(xmlProject, 'CustomConflict').text = self.novel.customConflict
         if self.novel.customOutcome:
-            ET.SubElement(xmlProject, 'CustomOutcome').text = self._convert_from_novelyst(self.novel.customOutcome, quick=True)
+            ET.SubElement(xmlProject, 'CustomOutcome').text = self.novel.customOutcome
         if self.novel.customChrBio:
-            ET.SubElement(xmlProject, 'CustomChrBio').text = self._convert_from_novelyst(self.novel.customChrBio, quick=True)
+            ET.SubElement(xmlProject, 'CustomChrBio').text = self.novel.customChrBio
         if self.novel.customChrGoals:
-            ET.SubElement(xmlProject, 'CustomChrGoals').text = self._convert_from_novelyst(self.novel.customChrGoals, quick=True)
+            ET.SubElement(xmlProject, 'CustomChrGoals').text = self.novel.customChrGoals
         if self.novel.wordCountStart:
             ET.SubElement(xmlProject, 'WordCountStart').text = str(self.novel.wordCountStart)
         if self.novel.wordTarget:
             ET.SubElement(xmlProject, 'WordTarget').text = str(self.novel.wordTarget)
         if self.novel.referenceDate:
             ET.SubElement(xmlProject, 'ReferenceDate').text = self.novel.referenceDate
+
+    def _build_projectnotes_branch(self, xmlProjectnote, projectNote):
+        if projectNote.title:
+            ET.SubElement(xmlProjectnote, 'Title').text = projectNote.title
+        if projectNote.desc:
+            xmlProjectnote.append(text_to_xml_element('Desc', projectNote.desc))
 
     def _build_section_branch(self, xmlSection, prjScn):
         if prjScn.stageLevel is not None:
@@ -2670,23 +2722,21 @@ class NovxFile(File):
             xmlSection.set('pacing', str(prjScn.scPacing))
         if prjScn.appendToPrev:
             xmlSection.set('append', '1')
-        if prjScn.scMode:
-            xmlSection.set('mode', str(prjScn.scMode))
         if prjScn.title:
-            ET.SubElement(xmlSection, 'Title').text = self._convert_from_novelyst(prjScn.title, quick=True)
+            ET.SubElement(xmlSection, 'Title').text = prjScn.title
         if prjScn.desc:
-            ET.SubElement(xmlSection, 'Desc').text = self._convert_from_novelyst(prjScn.desc)
+            xmlSection.append(text_to_xml_element('Desc', prjScn.desc))
         if prjScn.goal:
-            ET.SubElement(xmlSection, 'Goal').text = self._convert_from_novelyst(prjScn.goal)
+            xmlSection.append(text_to_xml_element('Goal', prjScn.goal))
         if prjScn.conflict:
-            ET.SubElement(xmlSection, 'Conflict').text = self._convert_from_novelyst(prjScn.conflict)
+            xmlSection.append(text_to_xml_element('Conflict', prjScn.conflict))
         if prjScn.outcome:
-            ET.SubElement(xmlSection, 'Outcome').text = self._convert_from_novelyst(prjScn.outcome)
+            xmlSection.append(text_to_xml_element('Outcome', prjScn.outcome))
         if prjScn.notes:
-            ET.SubElement(xmlSection, 'Notes').text = self._convert_from_novelyst(prjScn.notes)
+            xmlSection.append(text_to_xml_element('Notes', prjScn.notes))
         tagStr = list_to_string(prjScn.tags)
         if tagStr:
-            ET.SubElement(xmlSection, 'Tags').text = self._convert_from_novelyst(tagStr, quick=True)
+            ET.SubElement(xmlSection, 'Tags').text = tagStr
 
         if prjScn.date:
             ET.SubElement(xmlSection, 'Date').text = prjScn.date
@@ -2713,90 +2763,7 @@ class NovxFile(File):
             ET.SubElement(xmlSection, 'Items', attrib=attrib)
 
         if prjScn.sectionContent:
-            ET.SubElement(xmlSection, 'Content').text = self._convert_from_novelyst(prjScn.sectionContent)
-
-    def _convert_from_novelyst(self, text, quick=False):
-        if not text:
-            return ''
-
-        nvReplacements = [
-            ('&', '&amp;'),
-            ('>', '&gt;'),
-            ('<', '&lt;'),
-            ("'", '&apos;'),
-            ('"', '&quot;'),
-            ]
-        if not quick:
-            text = text.strip()
-            tags = ['i', 'b']
-            nvReplacements.extend([
-                ('\n', '</p><p>'),
-                ('[i]', '<em>'),
-                ('[/i]', '</em>'),
-                ('[b]', '<strong>'),
-                ('[/b]', '</strong>'),
-                ('/*@fn*', '<note type="1">'),
-                ('/*@fn', '<note type="2">'),
-                ('/*@en', '<note type="3">'),
-                ('/*', '<note>'),
-                ('*/', '</note>'),
-            ])
-            for language in self.novel.languages:
-                tags.append(f'lang={language}')
-                nvReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
-                nvReplacements.append((f'[/lang={language}]', '</span>'))
-
-            newlines = []
-            lines = text.split('\n')
-            isOpen = {}
-            opening = {}
-            closing = {}
-            for tag in tags:
-                isOpen[tag] = False
-                opening[tag] = f'[{tag}]'
-                closing[tag] = f'[/{tag}]'
-            for line in lines:
-                for tag in tags:
-                    if isOpen[tag]:
-                        if line.startswith('&gt; '):
-                            line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
-                        else:
-                            line = f'{opening[tag]}{line}'
-                        isOpen[tag] = False
-                    while line.count(opening[tag]) > line.count(closing[tag]):
-                        line = f'{line}{closing[tag]}'
-                        isOpen[tag] = True
-                    while line.count(closing[tag]) > line.count(opening[tag]):
-                        line = f'{opening[tag]}{line}'
-                    line = line.replace(f'{opening[tag]}{closing[tag]}', '')
-                newlines.append(line)
-            text = '\n'.join(newlines).rstrip()
-
-        for nv, nx in nvReplacements:
-            text = text.replace(nv, nx)
-        if quick:
-            return text
-
-        if text:
-            return f'<p>{text}</p>'
-        else:
-            return ''
-
-    def _convert_to_novelyst(self, text:str):
-        nvText = ''
-        if text:
-            xmlBytes = ET.tostring(text, encoding='utf-8')
-            xmlString = xmlBytes.decode('utf-8')
-            parser = NovxPParser()
-            parser.feed(xmlString)
-            nvText = ''.join(parser.textList).strip()
-        return nvText
-
-    def _get_xml_text(self, parent, elemName, default=None):
-        if parent.find(elemName) is not None:
-            return parent.find(elemName).text
-        else:
-            return default
+            xmlSection.append(ET.fromstring(f'<Content>{prjScn.sectionContent}</Content>'))
 
     def _get_link_dict(self, parent):
         links = {}
@@ -2812,116 +2779,130 @@ class NovxFile(File):
     def _postprocess_xml_file(self, filePath):
         with open(filePath, 'r', encoding='utf-8') as f:
             text = f.read()
-        text = unescape(text)
         try:
             with open(filePath, 'w', encoding='utf-8') as f:
                 f.write(f'{self.XML_HEADER}{text}')
         except:
             raise Error(f'{_("Cannot write file")}: "{norm_path(filePath)}".')
 
-    def _read_arcs(self, xmlArcs):
-        for xmlArc in xmlArcs.iterfind('ARC'):
-            acId = xmlArc.attrib['id']
-            self.novel.arcs[acId] = Arc(on_element_change=self.on_element_change)
-            self.novel.arcs[acId].title = self._get_xml_text(xmlArc, 'Title')
-            self.novel.arcs[acId].desc = self._convert_to_novelyst(xmlArc.find('Desc'))
-            self.novel.arcs[acId].shortName = self._get_xml_text(xmlArc, 'ShortName')
-            self.novel.tree.append(AC_ROOT, acId)
-            for xmlPoint in xmlArc.iterfind('POINT'):
-                tpId = xmlPoint.attrib['id']
-                self._read_turningPoint(xmlPoint, tpId, acId)
-                self.novel.tree.append(acId, tpId)
+    def _read_arcs(self, root):
+        try:
+            for xmlArc in root.find('ARCS'):
+                acId = xmlArc.attrib['id']
+                self.novel.arcs[acId] = Arc(on_element_change=self.on_element_change)
+                self.novel.arcs[acId].title = get_element_text(xmlArc, 'Title')
+                self.novel.arcs[acId].desc = xml_element_to_text(xmlArc.find('Desc'))
+                self.novel.arcs[acId].shortName = get_element_text(xmlArc, 'ShortName')
+                self.novel.tree.append(AC_ROOT, acId)
+                for xmlPoint in xmlArc.iterfind('POINT'):
+                    tpId = xmlPoint.attrib['id']
+                    self._read_turningPoint(xmlPoint, tpId, acId)
+                    self.novel.tree.append(acId, tpId)
 
-            acSections = []
-            xmlSections = xmlArc.find('Sections')
-            if xmlSections is not None:
-                scIds = xmlSections.get('ids', None)
-                for scId in string_to_list(scIds, divider=' '):
-                    if scId and scId in self.novel.sections:
-                        acSections.append(scId)
-                        self.novel.sections[scId].scArcs.append(acId)
-            self.novel.arcs[acId].sections = acSections
+                acSections = []
+                xmlSections = xmlArc.find('Sections')
+                if xmlSections is not None:
+                    scIds = xmlSections.get('ids', None)
+                    for scId in string_to_list(scIds, divider=' '):
+                        if scId and scId in self.novel.sections:
+                            acSections.append(scId)
+                            self.novel.sections[scId].scArcs.append(acId)
+                self.novel.arcs[acId].sections = acSections
+        except TypeError:
+            pass
 
     def _read_turningPoint(self, xmlPoint, tpId, acId):
         self.novel.turningPoints[tpId] = TurningPoint(on_element_change=self.on_element_change)
-        self.novel.turningPoints[tpId].title = self._get_xml_text(xmlPoint, 'Title')
-        self.novel.turningPoints[tpId].desc = self._convert_to_novelyst(xmlPoint.find('Desc'))
-        self.novel.turningPoints[tpId].notes = self._convert_to_novelyst(xmlPoint.find('Notes'))
+        self.novel.turningPoints[tpId].title = get_element_text(xmlPoint, 'Title')
+        self.novel.turningPoints[tpId].desc = xml_element_to_text(xmlPoint.find('Desc'))
+        self.novel.turningPoints[tpId].notes = xml_element_to_text(xmlPoint.find('Notes'))
         xmlSectionAssoc = xmlPoint.find('Section')
         if xmlSectionAssoc is not None:
             scId = xmlSectionAssoc.get('id', None)
             self.novel.turningPoints[tpId].sectionAssoc = scId
             self.novel.sections[scId].scTurningPoints[tpId] = acId
 
-    def _read_chapters(self, parent, partType=0):
-        for xmlChapter in parent.iterfind('CHAPTER'):
-            chId = xmlChapter.attrib['id']
-            self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
-            chType = xmlChapter.get('type', None)
-            if chType in ('1', '2', '3'):
-                self.novel.chapters[chId].chType = int(chType)
-            else:
-                self.novel.chapters[chId].chType = 0
-            chLevel = xmlChapter.get('level', None)
-            if chLevel == '1':
-                self.novel.chapters[chId].chLevel = 1
-            else:
-                self.novel.chapters[chId].chLevel = 2
-            self.novel.chapters[chId].isTrash = xmlChapter.get('isTrash', None) == '1'
-            self.novel.chapters[chId].noNumber = xmlChapter.get('noNumber', None) == '1'
-            self.novel.chapters[chId].title = self._get_xml_text(xmlChapter, 'Title')
-            self.novel.chapters[chId].desc = self._convert_to_novelyst(xmlChapter.find('Desc'))
-            self.novel.tree.append(CH_ROOT, chId)
-            if xmlChapter.find('SECTION'):
-                for xmlSection in xmlChapter.iterfind('SECTION'):
-                    scId = xmlSection.attrib['id']
-                    self._read_section(xmlSection, scId)
-                    if self.novel.chapters[chId].chType > 0:
-                        self.novel.sections[scId].scType = self.novel.chapters[chId].chType
-                    self.novel.tree.append(chId, scId)
+    def _read_chapters(self, root, partType=0):
+        try:
+            for xmlChapter in root.find('CHAPTERS'):
+                chId = xmlChapter.attrib['id']
+                self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
+                chType = xmlChapter.get('type', None)
+                if chType in ('1', '2', '3'):
+                    self.novel.chapters[chId].chType = int(chType)
+                else:
+                    self.novel.chapters[chId].chType = 0
+                chLevel = xmlChapter.get('level', None)
+                if chLevel == '1':
+                    self.novel.chapters[chId].chLevel = 1
+                else:
+                    self.novel.chapters[chId].chLevel = 2
+                self.novel.chapters[chId].isTrash = xmlChapter.get('isTrash', None) == '1'
+                self.novel.chapters[chId].noNumber = xmlChapter.get('noNumber', None) == '1'
+                self.novel.chapters[chId].title = get_element_text(xmlChapter, 'Title')
+                self.novel.chapters[chId].desc = xml_element_to_text(xmlChapter.find('Desc'))
+                self.novel.tree.append(CH_ROOT, chId)
+                if xmlChapter.find('SECTION'):
+                    for xmlSection in xmlChapter.iterfind('SECTION'):
+                        scId = xmlSection.attrib['id']
+                        self._read_section(xmlSection, scId)
+                        if self.novel.chapters[chId].chType > 0:
+                            self.novel.sections[scId].scType = self.novel.chapters[chId].chType
+                        self.novel.tree.append(chId, scId)
+        except TypeError:
+            pass
 
     def _read_characters(self, root):
-        for xmlCharacter in root.find('CHARACTERS'):
-            crId = xmlCharacter.attrib['id']
-            self.novel.characters[crId] = Character(on_element_change=self.on_element_change)
-            self.novel.characters[crId].isMajor = xmlCharacter.get('major', None) == '1'
-            self.novel.characters[crId].title = self._get_xml_text(xmlCharacter, 'Title')
-            self.novel.characters[crId].links = self._get_link_dict(xmlCharacter)
-            self.novel.characters[crId].desc = self._convert_to_novelyst(xmlCharacter.find('Desc'))
-            self.novel.characters[crId].aka = self._get_xml_text(xmlCharacter, 'Aka')
-            tags = string_to_list(self._get_xml_text(xmlCharacter, 'Tags'))
-            self.novel.characters[crId].tags = self._strip_spaces(tags)
-            self.novel.characters[crId].notes = self._convert_to_novelyst(xmlCharacter.find('Notes'))
-            self.novel.characters[crId].bio = self._convert_to_novelyst(xmlCharacter.find('Bio'))
-            self.novel.characters[crId].goals = self._convert_to_novelyst(xmlCharacter.find('Goals'))
-            self.novel.characters[crId].fullName = self._get_xml_text(xmlCharacter, 'FullName')
-            self.novel.characters[crId].birthDate = self._get_xml_text(xmlCharacter, 'BirthDate')
-            self.novel.characters[crId].deathDate = self._get_xml_text(xmlCharacter, 'DeathDate')
-            self.novel.tree.append(CR_ROOT, crId)
+        try:
+            for xmlCharacter in root.find('CHARACTERS'):
+                crId = xmlCharacter.attrib['id']
+                self.novel.characters[crId] = Character(on_element_change=self.on_element_change)
+                self.novel.characters[crId].isMajor = xmlCharacter.get('major', None) == '1'
+                self.novel.characters[crId].title = get_element_text(xmlCharacter, 'Title')
+                self.novel.characters[crId].links = self._get_link_dict(xmlCharacter)
+                self.novel.characters[crId].desc = xml_element_to_text(xmlCharacter.find('Desc'))
+                self.novel.characters[crId].aka = get_element_text(xmlCharacter, 'Aka')
+                tags = string_to_list(get_element_text(xmlCharacter, 'Tags'))
+                self.novel.characters[crId].tags = self._strip_spaces(tags)
+                self.novel.characters[crId].notes = xml_element_to_text(xmlCharacter.find('Notes'))
+                self.novel.characters[crId].bio = xml_element_to_text(xmlCharacter.find('Bio'))
+                self.novel.characters[crId].goals = xml_element_to_text(xmlCharacter.find('Goals'))
+                self.novel.characters[crId].fullName = get_element_text(xmlCharacter, 'FullName')
+                self.novel.characters[crId].birthDate = get_element_text(xmlCharacter, 'BirthDate')
+                self.novel.characters[crId].deathDate = get_element_text(xmlCharacter, 'DeathDate')
+                self.novel.tree.append(CR_ROOT, crId)
+        except TypeError:
+            pass
 
     def _read_items(self, root):
-        for xmlItem in root.find('ITEMS'):
-            itId = xmlItem.attrib['id']
-            self.novel.items[itId] = WorldElement(on_element_change=self.on_element_change)
-            self.novel.items[itId].title = self._get_xml_text(xmlItem, 'Title')
-            self.novel.items[itId].desc = self._convert_to_novelyst(xmlItem.find('Desc'))
-            self.novel.items[itId].aka = self._get_xml_text(xmlItem, 'Aka')
-            tags = string_to_list(self._get_xml_text(xmlItem, 'Tags'))
-            self.novel.items[itId].tags = self._strip_spaces(tags)
-            self.novel.items[itId].links = self._get_link_dict(xmlItem)
-            self.novel.tree.append(IT_ROOT, itId)
+        try:
+            for xmlItem in root.find('ITEMS'):
+                itId = xmlItem.attrib['id']
+                self.novel.items[itId] = WorldElement(on_element_change=self.on_element_change)
+                self.novel.items[itId].title = get_element_text(xmlItem, 'Title')
+                self.novel.items[itId].desc = xml_element_to_text(xmlItem.find('Desc'))
+                self.novel.items[itId].aka = get_element_text(xmlItem, 'Aka')
+                tags = string_to_list(get_element_text(xmlItem, 'Tags'))
+                self.novel.items[itId].tags = self._strip_spaces(tags)
+                self.novel.items[itId].links = self._get_link_dict(xmlItem)
+                self.novel.tree.append(IT_ROOT, itId)
+        except TypeError:
+            pass
 
     def _read_locations(self, root):
-        for xmlLocation in root.find('LOCATIONS'):
-            lcId = xmlLocation.attrib['id']
-            self.novel.locations[lcId] = WorldElement(on_element_change=self.on_element_change)
-            self.novel.locations[lcId].title = self._get_xml_text(xmlLocation, 'Title')
-            self.novel.locations[lcId].links = self._get_link_dict(xmlLocation)
-            self.novel.locations[lcId].desc = self._convert_to_novelyst(xmlLocation.find('Desc'))
-            self.novel.locations[lcId].aka = self._get_xml_text(xmlLocation, 'Aka')
-            tags = string_to_list(self._get_xml_text(xmlLocation, 'Tags'))
-            self.novel.locations[lcId].tags = self._strip_spaces(tags)
-            self.novel.tree.append(LC_ROOT, lcId)
+        try:
+            for xmlLocation in root.find('LOCATIONS'):
+                lcId = xmlLocation.attrib['id']
+                self.novel.locations[lcId] = WorldElement(on_element_change=self.on_element_change)
+                self.novel.locations[lcId].title = get_element_text(xmlLocation, 'Title')
+                self.novel.locations[lcId].links = self._get_link_dict(xmlLocation)
+                self.novel.locations[lcId].desc = xml_element_to_text(xmlLocation.find('Desc'))
+                self.novel.locations[lcId].aka = get_element_text(xmlLocation, 'Aka')
+                tags = string_to_list(get_element_text(xmlLocation, 'Tags'))
+                self.novel.locations[lcId].tags = self._strip_spaces(tags)
+                self.novel.tree.append(LC_ROOT, lcId)
+        except TypeError:
+            pass
 
     def _read_project(self, root):
         xmlProject = root.find('PROJECT')
@@ -2936,23 +2917,34 @@ class NovxFile(File):
             self.novel.workPhase = int(workPhase)
         else:
             self.novel.workPhase = None
-        self.novel.title = self._get_xml_text(xmlProject, 'Title')
-        self.novel.authorName = self._get_xml_text(xmlProject, 'Author')
-        self.novel.desc = self._convert_to_novelyst(xmlProject.find('Desc'))
-        self.novel.chapterHeadingPrefix = self._get_xml_text(xmlProject, 'ChapterHeadingPrefix')
-        self.novel.chapterHeadingSuffix = self._get_xml_text(xmlProject, 'ChapterHeadingSuffix')
-        self.novel.partHeadingPrefix = self._get_xml_text(xmlProject, 'PartHeadingPrefix')
-        self.novel.partHeadingSuffix = self._get_xml_text(xmlProject, 'PartHeadingSuffix')
-        self.novel.customGoal = self._get_xml_text(xmlProject, 'CustomGoal')
-        self.novel.customConflict = self._get_xml_text(xmlProject, 'CustomConflict')
-        self.novel.customOutcome = self._get_xml_text(xmlProject, 'CustomOutcome')
-        self.novel.customChrBio = self._get_xml_text(xmlProject, 'CustomChrBio')
-        self.novel.customChrGoals = self._get_xml_text(xmlProject, 'CustomChrGoals')
+        self.novel.title = get_element_text(xmlProject, 'Title')
+        self.novel.authorName = get_element_text(xmlProject, 'Author')
+        self.novel.desc = xml_element_to_text(xmlProject.find('Desc'))
+        self.novel.chapterHeadingPrefix = get_element_text(xmlProject, 'ChapterHeadingPrefix')
+        self.novel.chapterHeadingSuffix = get_element_text(xmlProject, 'ChapterHeadingSuffix')
+        self.novel.partHeadingPrefix = get_element_text(xmlProject, 'PartHeadingPrefix')
+        self.novel.partHeadingSuffix = get_element_text(xmlProject, 'PartHeadingSuffix')
+        self.novel.customGoal = get_element_text(xmlProject, 'CustomGoal')
+        self.novel.customConflict = get_element_text(xmlProject, 'CustomConflict')
+        self.novel.customOutcome = get_element_text(xmlProject, 'CustomOutcome')
+        self.novel.customChrBio = get_element_text(xmlProject, 'CustomChrBio')
+        self.novel.customChrGoals = get_element_text(xmlProject, 'CustomChrGoals')
         if xmlProject.find('WordCountStart') is not None:
             self.novel.wordCountStart = int(xmlProject.find('WordCountStart').text)
         if xmlProject.find('WordTarget') is not None:
             self.novel.wordTarget = int(xmlProject.find('WordTarget').text)
-        self.novel.referenceDate = self._get_xml_text(xmlProject, 'ReferenceDate')
+        self.novel.referenceDate = get_element_text(xmlProject, 'ReferenceDate')
+
+    def _read_projectnotes(self, root):
+        try:
+            for xmlProjectnote in root.find('PROJECTNOTES'):
+                pnId = xmlProjectnote.attrib['id']
+                self.novel.projectNotes[pnId] = BasicElement()
+                self.novel.projectNotes[pnId].title = get_element_text(xmlProjectnote, 'Title')
+                self.novel.projectNotes[pnId].desc = xml_element_to_text(xmlProjectnote.find('Desc'))
+                self.novel.tree.append(PN_ROOT, pnId)
+        except TypeError:
+            pass
 
     def _read_section(self, xmlSection, scId):
         self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
@@ -2977,17 +2969,25 @@ class NovxFile(File):
             self.novel.sections[scId].scPacing = int(scPacing)
         else:
             self.novel.sections[scId].scPacing = 0
-        scMode = xmlSection.get('mode', None)
-        if scMode in ('1', '2', '3', '4', '5'):
-            self.novel.sections[scId].scMode = int(scMode)
-        else:
-            self.novel.sections[scId].scMode = None
         self.novel.sections[scId].appendToPrev = xmlSection.get('append', None) == '1'
-        self.novel.sections[scId].title = self._get_xml_text(xmlSection, 'Title')
-        self.novel.sections[scId].desc = self._convert_to_novelyst(xmlSection.find('Desc'))
-        self.novel.sections[scId].sectionContent = self._convert_to_novelyst(xmlSection.find('Content'))
-        self.novel.sections[scId].notes = self._convert_to_novelyst(xmlSection.find('Notes'))
-        tags = string_to_list(self._get_xml_text(xmlSection, 'Tags'))
+        self.novel.sections[scId].title = get_element_text(xmlSection, 'Title')
+        self.novel.sections[scId].desc = xml_element_to_text(xmlSection.find('Desc'))
+
+        if xmlSection.find('Content'):
+            xmlStr = ET.tostring(xmlSection.find('Content'),
+                                 encoding='utf-8',
+                                 short_empty_elements=False
+                                 ).decode('utf-8')
+            xmlStr = xmlStr.replace('<Content>', '').replace('</Content>', '')
+
+            lines = xmlStr.split('\n')
+            newlines = []
+            for line in lines:
+                newlines.append(line.strip())
+            xmlStr = ''.join(newlines)
+            self.novel.sections[scId].sectionContent = xmlStr
+        self.novel.sections[scId].notes = xml_element_to_text(xmlSection.find('Notes'))
+        tags = string_to_list(get_element_text(xmlSection, 'Tags'))
         self.novel.sections[scId].tags = self._strip_spaces(tags)
 
         if xmlSection.find('Date') is not None:
@@ -3016,12 +3016,12 @@ class NovxFile(File):
             else:
                 self.novel.sections[scId].time = timeStr
 
-        self.novel.sections[scId].lastsDays = self._get_xml_text(xmlSection, 'LastsDays')
-        self.novel.sections[scId].lastsHours = self._get_xml_text(xmlSection, 'LastsHours')
-        self.novel.sections[scId].lastsMinutes = self._get_xml_text(xmlSection, 'LastsMinutes')
-        self.novel.sections[scId].goal = self._convert_to_novelyst(xmlSection.find('Goal'))
-        self.novel.sections[scId].conflict = self._convert_to_novelyst(xmlSection.find('Conflict'))
-        self.novel.sections[scId].outcome = self._convert_to_novelyst(xmlSection.find('Outcome'))
+        self.novel.sections[scId].lastsDays = get_element_text(xmlSection, 'LastsDays')
+        self.novel.sections[scId].lastsHours = get_element_text(xmlSection, 'LastsHours')
+        self.novel.sections[scId].lastsMinutes = get_element_text(xmlSection, 'LastsMinutes')
+        self.novel.sections[scId].goal = xml_element_to_text(xmlSection.find('Goal'))
+        self.novel.sections[scId].conflict = xml_element_to_text(xmlSection.find('Conflict'))
+        self.novel.sections[scId].outcome = xml_element_to_text(xmlSection.find('Outcome'))
 
         scCharacters = []
         xmlCharacters = xmlSection.find('Characters')
@@ -3083,6 +3083,7 @@ class NvTree:
             LC_ROOT:[],
             IT_ROOT:[],
             AC_ROOT:[],
+            PN_ROOT:[],
             }
         self.srtSections = {}
         self.srtTurningPoints = {}

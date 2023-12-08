@@ -11,7 +11,7 @@ import sys
 import os
 import xml.etree.ElementTree as ET
 
-from novxlib.novx.xml_indent import indent
+from novxlib.xml.xml_indent import indent
 from yw2novx_ import yw2novx
 
 XML_HEADER = '''<?xml version="1.0" encoding="utf-8"?>
