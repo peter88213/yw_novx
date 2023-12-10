@@ -2476,7 +2476,7 @@ def xml_element_to_text(xmlElement):
 
 
 class NovxFile(File):
-    DESCRIPTION = _('novelyst project')
+    DESCRIPTION = _('noveltree project')
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
@@ -2528,13 +2528,13 @@ class NovxFile(File):
             raise Error(f'{_("No valid version found in file")}: "{norm_path(self.filePath)}".')
 
         if majorVersion > self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer novelyst version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with a newer noveltree version.').format(norm_path(self.filePath)))
 
         elif majorVersion < self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with an outdated novelyst version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with an outdated noveltree version.').format(norm_path(self.filePath)))
 
         elif minorVersion > self.MINOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer novelyst version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with a newer noveltree version.').format(norm_path(self.filePath)))
 
         try:
             locale = xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
