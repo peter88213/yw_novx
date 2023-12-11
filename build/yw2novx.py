@@ -2843,8 +2843,10 @@ class NovxFile(File):
             attrib = {'ids':' '.join(prjScn.items)}
             ET.SubElement(xmlSection, 'Items', attrib=attrib)
 
-        if prjScn.sectionContent:
-            xmlSection.append(ET.fromstring(f'<Content>{prjScn.sectionContent}</Content>'))
+        sectionContent = prjScn.sectionContent
+        if sectionContent:
+            if not sectionContent in ('<p></p>', '<p />'):
+                xmlSection.append(ET.fromstring(f'<Content>{sectionContent}</Content>'))
 
     def _get_link_dict(self, parent):
         links = {}
@@ -3060,8 +3062,15 @@ class NovxFile(File):
             for line in lines:
                 newlines.append(line.strip())
             xmlStr = ''.join(newlines)
-            self.novel.sections[scId].sectionContent = xmlStr
+            if xmlStr:
+                self.novel.sections[scId].sectionContent = xmlStr
+            else:
+                self.novel.sections[scId].sectionContent = '<p></p>'
+        else:
+            self.novel.sections[scId].sectionContent = '<p></p>'
+
         self.novel.sections[scId].notes = xml_element_to_text(xmlSection.find('Notes'))
+
         tags = string_to_list(get_element_text(xmlSection, 'Tags'))
         self.novel.sections[scId].tags = self._strip_spaces(tags)
 
