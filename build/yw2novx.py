@@ -9,59 +9,16 @@ SUFFIX = ''
 import sys
 import os
 
-import re
 from datetime import datetime
 from html import unescape
-import xml.etree.ElementTree as ET
+import re
+
+from abc import ABC
+from urllib.parse import quote
+
 import gettext
 import locale
 
-__all__ = [
-    'Error',
-    '_',
-    'LOCALE_PATH',
-    'CURRENT_LANGUAGE',
-    'norm_path',
-    'string_to_list',
-    'list_to_string',
-    'ROOT_PREFIX',
-    'ARC_PREFIX',
-    'ARC_POINT_PREFIX',
-    'CHAPTER_PREFIX',
-    'SECTION_PREFIX',
-    'CHARACTER_PREFIX',
-    'LOCATION_PREFIX',
-    'ITEM_PREFIX',
-    'PRJ_NOTE_PREFIX',
-    'CH_ROOT',
-    'AC_ROOT',
-    'CR_ROOT',
-    'LC_ROOT',
-    'IT_ROOT',
-    'PN_ROOT',
-    'BRF_SYNOPSIS_SUFFIX',
-    'CHAPTERS_SUFFIX',
-    'CHARACTER_REPORT_SUFFIX',
-    'CHARACTERS_SUFFIX',
-    'CHARLIST_SUFFIX',
-    'DATA_SUFFIX',
-    'ITEM_REPORT_SUFFIX',
-    'ITEMLIST_SUFFIX',
-    'ITEMS_SUFFIX',
-    'LOCATION_REPORT_SUFFIX',
-    'LOCATIONS_SUFFIX',
-    'LOCLIST_SUFFIX',
-    'MANUSCRIPT_SUFFIX',
-    'PARTS_SUFFIX',
-    'PLOTLIST_SUFFIX',
-    'PLOT_SUFFIX',
-    'PROJECTNOTES_SUFFIX',
-    'PROOF_SUFFIX',
-    'SECTIONLIST_SUFFIX',
-    'SECTIONS_SUFFIX',
-    'XREF_SUFFIX',
-    'WEEKDAYS',
-    ]
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
 ARC_PREFIX = 'ac'
@@ -157,398 +114,6 @@ def list_to_string(elements, divider=';'):
     except:
         return ''
 
-from abc import ABC
-from urllib.parse import quote
-from datetime import date
-
-
-class BasicElement:
-
-    def __init__(self,
-            on_element_change=None,
-            title=None,
-            desc=None):
-        if on_element_change is None:
-            self.on_element_change = self.do_nothing
-        else:
-            self.on_element_change = on_element_change
-        self._title = title
-        self._desc = desc
-
-    @property
-    def title(self):
-        return self._title
-
-    @title.setter
-    def title(self, newVal):
-        if self._title != newVal:
-            self._title = newVal
-            self.on_element_change()
-
-    @property
-    def desc(self):
-        return self._desc
-
-    @desc.setter
-    def desc(self, newVal):
-        if self._desc != newVal:
-            self._desc = newVal
-            self.on_element_change()
-
-    def do_nothing(self):
-        pass
-
-
-LANGUAGE_TAG = re.compile('\<span xml\:lang=\"(.*?)\"\>')
-
-
-class Novel(BasicElement):
-
-    def __init__(self,
-            authorName=None,
-            wordTarget=None,
-            wordCountStart=None,
-            languageCode=None,
-            countryCode=None,
-            renumberChapters=None,
-            renumberParts=None,
-            renumberWithinParts=None,
-            romanChapterNumbers=None,
-            romanPartNumbers=None,
-            saveWordCount=None,
-            workPhase=None,
-            chapterHeadingPrefix=None,
-            chapterHeadingSuffix=None,
-            partHeadingPrefix=None,
-            partHeadingSuffix=None,
-            customGoal=None,
-            customConflict=None,
-            customOutcome=None,
-            customChrBio=None,
-            customChrGoals=None,
-            referenceDate=None,
-            tree=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._authorName = authorName
-        self._wordTarget = wordTarget
-        self._wordCountStart = wordCountStart
-        self._languageCode = languageCode
-        self._countryCode = countryCode
-        self._renumberChapters = renumberChapters
-        self._renumberParts = renumberParts
-        self._renumberWithinParts = renumberWithinParts
-        self._romanChapterNumbers = romanChapterNumbers
-        self._romanPartNumbers = romanPartNumbers
-        self._saveWordCount = saveWordCount
-        self._workPhase = workPhase
-        self._chapterHeadingPrefix = chapterHeadingPrefix
-        self._chapterHeadingSuffix = chapterHeadingSuffix
-        self._partHeadingPrefix = partHeadingPrefix
-        self._partHeadingSuffix = partHeadingSuffix
-        self._customGoal = customGoal
-        self._customConflict = customConflict
-        self._customOutcome = customOutcome
-        self._customChrBio = customChrBio
-        self._customChrGoals = customChrGoals
-
-        self.chapters = {}
-        self.sections = {}
-        self.turningPoints = {}
-        self.languages = None
-        self.arcs = {}
-        self.locations = {}
-        self.items = {}
-        self.characters = {}
-        self.projectNotes = {}
-        try:
-            self.referenceWeekDay = date.fromisoformat(referenceDate).weekday()
-            self._referenceDate = referenceDate
-        except:
-            self.referenceWeekDay = None
-            self._referenceDate = None
-        self.tree = tree
-
-    @property
-    def authorName(self):
-        return self._authorName
-
-    @authorName.setter
-    def authorName(self, newVal):
-        if self._authorName != newVal:
-            self._authorName = newVal
-            self.on_element_change()
-
-    @property
-    def wordTarget(self):
-        return self._wordTarget
-
-    @wordTarget.setter
-    def wordTarget(self, newVal):
-        if self._wordTarget != newVal:
-            self._wordTarget = newVal
-            self.on_element_change()
-
-    @property
-    def wordCountStart(self):
-        return self._wordCountStart
-
-    @wordCountStart.setter
-    def wordCountStart(self, newVal):
-        if self._wordCountStart != newVal:
-            self._wordCountStart = newVal
-            self.on_element_change()
-
-    @property
-    def languageCode(self):
-        return self._languageCode
-
-    @languageCode.setter
-    def languageCode(self, newVal):
-        if self._languageCode != newVal:
-            self._languageCode = newVal
-            self.on_element_change()
-
-    @property
-    def countryCode(self):
-        return self._countryCode
-
-    @countryCode.setter
-    def countryCode(self, newVal):
-        if self._countryCode != newVal:
-            self._countryCode = newVal
-            self.on_element_change()
-
-    @property
-    def renumberChapters(self):
-        return self._renumberChapters
-
-    @renumberChapters.setter
-    def renumberChapters(self, newVal):
-        if self._renumberChapters != newVal:
-            self._renumberChapters = newVal
-            self.on_element_change()
-
-    @property
-    def renumberParts(self):
-        return self._renumberParts
-
-    @renumberParts.setter
-    def renumberParts(self, newVal):
-        if self._renumberParts != newVal:
-            self._renumberParts = newVal
-            self.on_element_change()
-
-    @property
-    def renumberWithinParts(self):
-        return self._renumberWithinParts
-
-    @renumberWithinParts.setter
-    def renumberWithinParts(self, newVal):
-        if self._renumberWithinParts != newVal:
-            self._renumberWithinParts = newVal
-            self.on_element_change()
-
-    @property
-    def romanChapterNumbers(self):
-        return self._romanChapterNumbers
-
-    @romanChapterNumbers.setter
-    def romanChapterNumbers(self, newVal):
-        if self._romanChapterNumbers != newVal:
-            self._romanChapterNumbers = newVal
-            self.on_element_change()
-
-    @property
-    def romanPartNumbers(self):
-        return self._romanPartNumbers
-
-    @romanPartNumbers.setter
-    def romanPartNumbers(self, newVal):
-        if self._romanPartNumbers != newVal:
-            self._romanPartNumbers = newVal
-            self.on_element_change()
-
-    @property
-    def saveWordCount(self):
-        return self._saveWordCount
-
-    @saveWordCount.setter
-    def saveWordCount(self, newVal):
-        if self._saveWordCount != newVal:
-            self._saveWordCount = newVal
-            self.on_element_change()
-
-    @property
-    def workPhase(self):
-        return self._workPhase
-
-    @workPhase.setter
-    def workPhase(self, newVal):
-        if self._workPhase != newVal:
-            self._workPhase = newVal
-            self.on_element_change()
-
-    @property
-    def chapterHeadingPrefix(self):
-        return self._chapterHeadingPrefix
-
-    @chapterHeadingPrefix.setter
-    def chapterHeadingPrefix(self, newVal):
-        if self._chapterHeadingPrefix != newVal:
-            self._chapterHeadingPrefix = newVal
-            self.on_element_change()
-
-    @property
-    def chapterHeadingSuffix(self):
-        return self._chapterHeadingSuffix
-
-    @chapterHeadingSuffix.setter
-    def chapterHeadingSuffix(self, newVal):
-        if self._chapterHeadingSuffix != newVal:
-            self._chapterHeadingSuffix = newVal
-            self.on_element_change()
-
-    @property
-    def partHeadingPrefix(self):
-        return self._partHeadingPrefix
-
-    @partHeadingPrefix.setter
-    def partHeadingPrefix(self, newVal):
-        if self._partHeadingPrefix != newVal:
-            self._partHeadingPrefix = newVal
-            self.on_element_change()
-
-    @property
-    def partHeadingSuffix(self):
-        return self._partHeadingSuffix
-
-    @partHeadingSuffix.setter
-    def partHeadingSuffix(self, newVal):
-        if self._partHeadingSuffix != newVal:
-            self._partHeadingSuffix = newVal
-            self.on_element_change()
-
-    @property
-    def customGoal(self):
-        return self._customGoal
-
-    @customGoal.setter
-    def customGoal(self, newVal):
-        if self._customGoal != newVal:
-            self._customGoal = newVal
-            self.on_element_change()
-
-    @property
-    def customConflict(self):
-        return self._customConflict
-
-    @customConflict.setter
-    def customConflict(self, newVal):
-        if self._customConflict != newVal:
-            self._customConflict = newVal
-            self.on_element_change()
-
-    @property
-    def customOutcome(self):
-        return self._customOutcome
-
-    @customOutcome.setter
-    def customOutcome(self, newVal):
-        if self._customOutcome != newVal:
-            self._customOutcome = newVal
-            self.on_element_change()
-
-    @property
-    def customChrBio(self):
-        return self._customChrBio
-
-    @customChrBio.setter
-    def customChrBio(self, newVal):
-        if self._customChrBio != newVal:
-            self._customChrBio = newVal
-            self.on_element_change()
-
-    @property
-    def customChrGoals(self):
-        return self._customChrGoals
-
-    @customChrGoals.setter
-    def customChrGoals(self, newVal):
-        if self._customChrGoals != newVal:
-            self._customChrGoals = newVal
-            self.on_element_change()
-
-    @property
-    def referenceDate(self):
-        return self._referenceDate
-
-    @referenceDate.setter
-    def referenceDate(self, newVal):
-        if self._referenceDate != newVal:
-            if not newVal:
-                self._referenceDate = None
-                self.referenceWeekDay = None
-            else:
-                try:
-                    self.referenceWeekDay = date.fromisoformat(newVal).weekday()
-                except:
-                    pass
-                else:
-                    self._referenceDate = newVal
-                    self.on_element_change()
-
-    def update_section_arcs(self):
-        for scId in self.sections:
-            self.sections[scId].scTurningPoints = {}
-            self.sections[scId].scArcs = []
-            for acId in self.arcs:
-                if scId in self.arcs[acId].sections:
-                    self.sections[scId].scArcs.append(acId)
-                    for tpId in self.tree.get_children(acId):
-                        if self.turningPoints[tpId].sectionAssoc == scId:
-                            self.sections[scId].scTurningPoints[tpId] = acId
-                            break
-
-    def get_languages(self):
-
-        def languages(text):
-            if text:
-                m = LANGUAGE_TAG.search(text)
-                while m:
-                    text = text[m.span()[1]:]
-                    yield m.group(1)
-                    m = LANGUAGE_TAG.search(text)
-
-        self.languages = []
-        for scId in self.sections:
-            text = self.sections[scId].sectionContent
-            if text:
-                for language in languages(text):
-                    if not language in self.languages:
-                        self.languages.append(language)
-
-    def check_locale(self):
-        if not self._languageCode:
-            try:
-                sysLng, sysCtr = locale.getlocale()[0].split('_')
-            except:
-                sysLng, sysCtr = locale.getdefaultlocale()[0].split('_')
-            self._languageCode = sysLng
-            self._countryCode = sysCtr
-            self.on_element_change()
-            return
-
-        try:
-            if len(self._languageCode) == 2:
-                if len(self._countryCode) == 2:
-                    return
-        except:
-            pass
-        self._languageCode = 'zxx'
-        self._countryCode = 'none'
-        self.on_element_change()
-
 
 
 class File(ABC):
@@ -606,6 +171,44 @@ class File(ABC):
 
 
 
+class BasicElement:
+
+    def __init__(self,
+            on_element_change=None,
+            title=None,
+            desc=None):
+        if on_element_change is None:
+            self.on_element_change = self.do_nothing
+        else:
+            self.on_element_change = on_element_change
+        self._title = title
+        self._desc = desc
+
+    @property
+    def title(self):
+        return self._title
+
+    @title.setter
+    def title(self, newVal):
+        if self._title != newVal:
+            self._title = newVal
+            self.on_element_change()
+
+    @property
+    def desc(self):
+        return self._desc
+
+    @desc.setter
+    def desc(self, newVal):
+        if self._desc != newVal:
+            self._desc = newVal
+            self.on_element_change()
+
+    def do_nothing(self):
+        pass
+
+
+
 class Arc(BasicElement):
 
     def __init__(self,
@@ -642,38 +245,59 @@ class Arc(BasicElement):
 
 
 
-class TurningPoint(BasicElement):
+class Chapter(BasicElement):
 
     def __init__(self,
-            sectionAssoc=None,
-            notes=None,
+            chLevel=None,
+            chType=None,
+            noNumber=None,
+            isTrash=None,
             **kwargs):
         super().__init__(**kwargs)
-
-        self._sectionAssoc = sectionAssoc
-
-        self._notes = notes
+        self._chLevel = chLevel
+        self._chType = chType
+        self._noNumber = noNumber
+        self._isTrash = isTrash
 
     @property
-    def sectionAssoc(self):
-        return self._sectionAssoc
+    def chLevel(self):
+        return self._chLevel
 
-    @sectionAssoc.setter
-    def sectionAssoc(self, newVal):
-        if self._sectionAssoc != newVal:
-            self._sectionAssoc = newVal
+    @chLevel.setter
+    def chLevel(self, newVal):
+        if self._chLevel != newVal:
+            self._chLevel = newVal
             self.on_element_change()
 
     @property
-    def notes(self):
-        return self._notes
+    def chType(self):
+        return self._chType
 
-    @notes.setter
-    def notes(self, newVal):
-        if self._notes != newVal:
-            self._notes = newVal
+    @chType.setter
+    def chType(self, newVal):
+        if self._chType != newVal:
+            self._chType = newVal
             self.on_element_change()
 
+    @property
+    def noNumber(self):
+        return self._noNumber
+
+    @noNumber.setter
+    def noNumber(self, newVal):
+        if self._noNumber != newVal:
+            self._noNumber = newVal
+            self.on_element_change()
+
+    @property
+    def isTrash(self):
+        return self._isTrash
+
+    @isTrash.setter
+    def isTrash(self, newVal):
+        if self._isTrash != newVal:
+            self._isTrash = newVal
+            self.on_element_change()
 
 
 class WorldElement(BasicElement):
@@ -815,61 +439,6 @@ class Character(WorldElement):
             self._deathDate = newVal
             self.on_element_change()
 
-
-
-class Chapter(BasicElement):
-
-    def __init__(self,
-            chLevel=None,
-            chType=None,
-            noNumber=None,
-            isTrash=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._chLevel = chLevel
-        self._chType = chType
-        self._noNumber = noNumber
-        self._isTrash = isTrash
-
-    @property
-    def chLevel(self):
-        return self._chLevel
-
-    @chLevel.setter
-    def chLevel(self, newVal):
-        if self._chLevel != newVal:
-            self._chLevel = newVal
-            self.on_element_change()
-
-    @property
-    def chType(self):
-        return self._chType
-
-    @chType.setter
-    def chType(self, newVal):
-        if self._chType != newVal:
-            self._chType = newVal
-            self.on_element_change()
-
-    @property
-    def noNumber(self):
-        return self._noNumber
-
-    @noNumber.setter
-    def noNumber(self, newVal):
-        if self._noNumber != newVal:
-            self._noNumber = newVal
-            self.on_element_change()
-
-    @property
-    def isTrash(self):
-        return self._isTrash
-
-    @isTrash.setter
-    def isTrash(self, newVal):
-        if self._isTrash != newVal:
-            self._isTrash = newVal
-            self.on_element_change()
 
 
 def create_id(elements, prefix=''):
@@ -1229,6 +798,40 @@ class Section(BasicElement):
 
 
 
+class TurningPoint(BasicElement):
+
+    def __init__(self,
+            sectionAssoc=None,
+            notes=None,
+            **kwargs):
+        super().__init__(**kwargs)
+
+        self._sectionAssoc = sectionAssoc
+
+        self._notes = notes
+
+    @property
+    def sectionAssoc(self):
+        return self._sectionAssoc
+
+    @sectionAssoc.setter
+    def sectionAssoc(self, newVal):
+        if self._sectionAssoc != newVal:
+            self._sectionAssoc = newVal
+            self.on_element_change()
+
+    @property
+    def notes(self):
+        return self._notes
+
+    @notes.setter
+    def notes(self, newVal):
+        if self._notes != newVal:
+            self._notes = newVal
+            self.on_element_change()
+
+
+
 def indent(elem, level=0):
     i = f'\n{level * "  "}'
     if elem:
@@ -1320,6 +923,7 @@ class NovxPParser(sax.ContentHandler):
         elif name in ('creator', 'date', 'note-citation'):
             self._paragraph = False
 
+import xml.etree.ElementTree as ET
 
 
 class Yw7File(File):
@@ -2441,6 +2045,7 @@ class Yw7File(File):
 from datetime import date
 from datetime import time
 
+
 __all__ = [
     'get_element_text',
     'text_to_xml_element',
@@ -3114,7 +2719,7 @@ class NovxFile(File):
             for crId in string_to_list(crIds, divider=' '):
                 if crId and crId in self.novel.characters:
                     scCharacters.append(crId)
-            self.novel.sections[scId].characters = scCharacters
+        self.novel.sections[scId].characters = scCharacters
 
         scLocations = []
         xmlLocations = xmlSection.find('Locations')
@@ -3123,7 +2728,7 @@ class NovxFile(File):
             for lcId in string_to_list(lcIds, divider=' '):
                 if lcId and lcId in self.novel.locations:
                     scLocations.append(lcId)
-            self.novel.sections[scId].locations = scLocations
+        self.novel.sections[scId].locations = scLocations
 
         scItems = []
         xmlItems = xmlSection.find('Items')
@@ -3132,7 +2737,7 @@ class NovxFile(File):
             for itId in string_to_list(itIds, divider=' '):
                 if itId and itId in self.novel.items:
                     scItems.append(itId)
-            self.novel.sections[scId].items = scItems
+        self.novel.sections[scId].items = scItems
 
     def _strip_spaces(self, lines):
         stripped = []
@@ -3155,6 +2760,359 @@ class NovxFile(File):
             if backedUp:
                 os.replace(f'{xmlProject.filePath}.bak', xmlProject.filePath)
             raise Error(f'{_("Cannot write file")}: "{norm_path(xmlProject.filePath)}".')
+
+from datetime import date
+
+
+LANGUAGE_TAG = re.compile('\<span xml\:lang=\"(.*?)\"\>')
+
+
+class Novel(BasicElement):
+
+    def __init__(self,
+            authorName=None,
+            wordTarget=None,
+            wordCountStart=None,
+            languageCode=None,
+            countryCode=None,
+            renumberChapters=None,
+            renumberParts=None,
+            renumberWithinParts=None,
+            romanChapterNumbers=None,
+            romanPartNumbers=None,
+            saveWordCount=None,
+            workPhase=None,
+            chapterHeadingPrefix=None,
+            chapterHeadingSuffix=None,
+            partHeadingPrefix=None,
+            partHeadingSuffix=None,
+            customGoal=None,
+            customConflict=None,
+            customOutcome=None,
+            customChrBio=None,
+            customChrGoals=None,
+            referenceDate=None,
+            tree=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._authorName = authorName
+        self._wordTarget = wordTarget
+        self._wordCountStart = wordCountStart
+        self._languageCode = languageCode
+        self._countryCode = countryCode
+        self._renumberChapters = renumberChapters
+        self._renumberParts = renumberParts
+        self._renumberWithinParts = renumberWithinParts
+        self._romanChapterNumbers = romanChapterNumbers
+        self._romanPartNumbers = romanPartNumbers
+        self._saveWordCount = saveWordCount
+        self._workPhase = workPhase
+        self._chapterHeadingPrefix = chapterHeadingPrefix
+        self._chapterHeadingSuffix = chapterHeadingSuffix
+        self._partHeadingPrefix = partHeadingPrefix
+        self._partHeadingSuffix = partHeadingSuffix
+        self._customGoal = customGoal
+        self._customConflict = customConflict
+        self._customOutcome = customOutcome
+        self._customChrBio = customChrBio
+        self._customChrGoals = customChrGoals
+
+        self.chapters = {}
+        self.sections = {}
+        self.turningPoints = {}
+        self.languages = None
+        self.arcs = {}
+        self.locations = {}
+        self.items = {}
+        self.characters = {}
+        self.projectNotes = {}
+        try:
+            self.referenceWeekDay = date.fromisoformat(referenceDate).weekday()
+            self._referenceDate = referenceDate
+        except:
+            self.referenceWeekDay = None
+            self._referenceDate = None
+        self.tree = tree
+
+    @property
+    def authorName(self):
+        return self._authorName
+
+    @authorName.setter
+    def authorName(self, newVal):
+        if self._authorName != newVal:
+            self._authorName = newVal
+            self.on_element_change()
+
+    @property
+    def wordTarget(self):
+        return self._wordTarget
+
+    @wordTarget.setter
+    def wordTarget(self, newVal):
+        if self._wordTarget != newVal:
+            self._wordTarget = newVal
+            self.on_element_change()
+
+    @property
+    def wordCountStart(self):
+        return self._wordCountStart
+
+    @wordCountStart.setter
+    def wordCountStart(self, newVal):
+        if self._wordCountStart != newVal:
+            self._wordCountStart = newVal
+            self.on_element_change()
+
+    @property
+    def languageCode(self):
+        return self._languageCode
+
+    @languageCode.setter
+    def languageCode(self, newVal):
+        if self._languageCode != newVal:
+            self._languageCode = newVal
+            self.on_element_change()
+
+    @property
+    def countryCode(self):
+        return self._countryCode
+
+    @countryCode.setter
+    def countryCode(self, newVal):
+        if self._countryCode != newVal:
+            self._countryCode = newVal
+            self.on_element_change()
+
+    @property
+    def renumberChapters(self):
+        return self._renumberChapters
+
+    @renumberChapters.setter
+    def renumberChapters(self, newVal):
+        if self._renumberChapters != newVal:
+            self._renumberChapters = newVal
+            self.on_element_change()
+
+    @property
+    def renumberParts(self):
+        return self._renumberParts
+
+    @renumberParts.setter
+    def renumberParts(self, newVal):
+        if self._renumberParts != newVal:
+            self._renumberParts = newVal
+            self.on_element_change()
+
+    @property
+    def renumberWithinParts(self):
+        return self._renumberWithinParts
+
+    @renumberWithinParts.setter
+    def renumberWithinParts(self, newVal):
+        if self._renumberWithinParts != newVal:
+            self._renumberWithinParts = newVal
+            self.on_element_change()
+
+    @property
+    def romanChapterNumbers(self):
+        return self._romanChapterNumbers
+
+    @romanChapterNumbers.setter
+    def romanChapterNumbers(self, newVal):
+        if self._romanChapterNumbers != newVal:
+            self._romanChapterNumbers = newVal
+            self.on_element_change()
+
+    @property
+    def romanPartNumbers(self):
+        return self._romanPartNumbers
+
+    @romanPartNumbers.setter
+    def romanPartNumbers(self, newVal):
+        if self._romanPartNumbers != newVal:
+            self._romanPartNumbers = newVal
+            self.on_element_change()
+
+    @property
+    def saveWordCount(self):
+        return self._saveWordCount
+
+    @saveWordCount.setter
+    def saveWordCount(self, newVal):
+        if self._saveWordCount != newVal:
+            self._saveWordCount = newVal
+            self.on_element_change()
+
+    @property
+    def workPhase(self):
+        return self._workPhase
+
+    @workPhase.setter
+    def workPhase(self, newVal):
+        if self._workPhase != newVal:
+            self._workPhase = newVal
+            self.on_element_change()
+
+    @property
+    def chapterHeadingPrefix(self):
+        return self._chapterHeadingPrefix
+
+    @chapterHeadingPrefix.setter
+    def chapterHeadingPrefix(self, newVal):
+        if self._chapterHeadingPrefix != newVal:
+            self._chapterHeadingPrefix = newVal
+            self.on_element_change()
+
+    @property
+    def chapterHeadingSuffix(self):
+        return self._chapterHeadingSuffix
+
+    @chapterHeadingSuffix.setter
+    def chapterHeadingSuffix(self, newVal):
+        if self._chapterHeadingSuffix != newVal:
+            self._chapterHeadingSuffix = newVal
+            self.on_element_change()
+
+    @property
+    def partHeadingPrefix(self):
+        return self._partHeadingPrefix
+
+    @partHeadingPrefix.setter
+    def partHeadingPrefix(self, newVal):
+        if self._partHeadingPrefix != newVal:
+            self._partHeadingPrefix = newVal
+            self.on_element_change()
+
+    @property
+    def partHeadingSuffix(self):
+        return self._partHeadingSuffix
+
+    @partHeadingSuffix.setter
+    def partHeadingSuffix(self, newVal):
+        if self._partHeadingSuffix != newVal:
+            self._partHeadingSuffix = newVal
+            self.on_element_change()
+
+    @property
+    def customGoal(self):
+        return self._customGoal
+
+    @customGoal.setter
+    def customGoal(self, newVal):
+        if self._customGoal != newVal:
+            self._customGoal = newVal
+            self.on_element_change()
+
+    @property
+    def customConflict(self):
+        return self._customConflict
+
+    @customConflict.setter
+    def customConflict(self, newVal):
+        if self._customConflict != newVal:
+            self._customConflict = newVal
+            self.on_element_change()
+
+    @property
+    def customOutcome(self):
+        return self._customOutcome
+
+    @customOutcome.setter
+    def customOutcome(self, newVal):
+        if self._customOutcome != newVal:
+            self._customOutcome = newVal
+            self.on_element_change()
+
+    @property
+    def customChrBio(self):
+        return self._customChrBio
+
+    @customChrBio.setter
+    def customChrBio(self, newVal):
+        if self._customChrBio != newVal:
+            self._customChrBio = newVal
+            self.on_element_change()
+
+    @property
+    def customChrGoals(self):
+        return self._customChrGoals
+
+    @customChrGoals.setter
+    def customChrGoals(self, newVal):
+        if self._customChrGoals != newVal:
+            self._customChrGoals = newVal
+            self.on_element_change()
+
+    @property
+    def referenceDate(self):
+        return self._referenceDate
+
+    @referenceDate.setter
+    def referenceDate(self, newVal):
+        if self._referenceDate != newVal:
+            if not newVal:
+                self._referenceDate = None
+                self.referenceWeekDay = None
+            else:
+                try:
+                    self.referenceWeekDay = date.fromisoformat(newVal).weekday()
+                except:
+                    pass
+                else:
+                    self._referenceDate = newVal
+                    self.on_element_change()
+
+    def update_section_arcs(self):
+        for scId in self.sections:
+            self.sections[scId].scTurningPoints = {}
+            self.sections[scId].scArcs = []
+            for acId in self.arcs:
+                if scId in self.arcs[acId].sections:
+                    self.sections[scId].scArcs.append(acId)
+                    for tpId in self.tree.get_children(acId):
+                        if self.turningPoints[tpId].sectionAssoc == scId:
+                            self.sections[scId].scTurningPoints[tpId] = acId
+                            break
+
+    def get_languages(self):
+
+        def languages(text):
+            if text:
+                m = LANGUAGE_TAG.search(text)
+                while m:
+                    text = text[m.span()[1]:]
+                    yield m.group(1)
+                    m = LANGUAGE_TAG.search(text)
+
+        self.languages = []
+        for scId in self.sections:
+            text = self.sections[scId].sectionContent
+            if text:
+                for language in languages(text):
+                    if not language in self.languages:
+                        self.languages.append(language)
+
+    def check_locale(self):
+        if not self._languageCode:
+            try:
+                sysLng, sysCtr = locale.getlocale()[0].split('_')
+            except:
+                sysLng, sysCtr = locale.getdefaultlocale()[0].split('_')
+            self._languageCode = sysLng
+            self._countryCode = sysCtr
+            self.on_element_change()
+            return
+
+        try:
+            if len(self._languageCode) == 2:
+                if len(self._countryCode) == 2:
+                    return
+        except:
+            pass
+        self._languageCode = 'zxx'
+        self._countryCode = 'none'
+        self.on_element_change()
 
 
 
@@ -3190,6 +3148,9 @@ class NvTree:
             except:
                 self.srtTurningPoints[parent] = [iid]
 
+    def delete(self, *items):
+        raise NotImplementedError
+
     def delete_children(self, parent):
         if parent in self.roots:
             self.roots[parent] = []
@@ -3212,6 +3173,9 @@ class NvTree:
         elif item.startswith(ARC_PREFIX):
             return self.srtTurningPoints.get(item, [])
 
+    def index(self, item):
+        raise NotImplementedError
+
     def insert(self, parent, index, iid):
         if parent in self.roots:
             self.roots[parent].insert(index, iid)
@@ -3229,6 +3193,18 @@ class NvTree:
                 self.srtTurningPoints.insert(index, iid)
             except:
                 self.srtTurningPoints[parent] = [iid]
+
+    def move(self, item, parent, index):
+        raise NotImplementedError
+
+    def next(self, item):
+        raise NotImplementedError
+
+    def parent(self, item):
+        raise NotImplementedError
+
+    def prev(self, item):
+        raise NotImplementedError
 
     def reset(self):
         for item in self.roots:
