@@ -1,7 +1,7 @@
 """Convert yw7 to novx.
 
 Copyright (c) 2024 Peter Triesberger
-For further information see https://github.com/peter88213/yw2novx
+For further information see https://github.com/peter88213/yw_novx
 License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 SUFFIX = ''
@@ -15,7 +15,7 @@ from novxlib.model.novel import Novel
 from novxlib.model.nv_tree import NvTree
 
 
-def yw2novx(sourcePath):
+def yw_novx(sourcePath):
     path, extension = os.path.splitext(sourcePath)
     if extension != '.yw7':
         raise ValueError(f'File must be .yw7 type, but is "{extension}".')
@@ -31,6 +31,6 @@ def yw2novx(sourcePath):
 
 
 if __name__ == '__main__':
-    yw2novx(sys.argv[1])
+    yw_novx(sys.argv[1])
     print('Done')
 

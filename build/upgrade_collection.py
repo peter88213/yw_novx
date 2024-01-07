@@ -364,6 +364,8 @@ class WorldElement(BasicElement):
     def links(self, newVal):
         if self._links != newVal:
             self._links = newVal
+            for linkPath in newVal:
+                self._links[linkPath] = os.path.split(linkPath)[1]
             self.on_element_change()
 
 
@@ -2260,8 +2262,6 @@ class NovxFile(File):
             for path in prjCrt.links:
                 xmlLink = ET.SubElement(xmlCrt, 'Link')
                 xmlLink.set('path', path)
-                if prjCrt.links[path]:
-                    xmlLink.text = prjCrt.links[path]
         if prjCrt.birthDate:
             ET.SubElement(xmlCrt, 'BirthDate').text = prjCrt.birthDate
         if prjCrt.deathDate:
@@ -2330,8 +2330,6 @@ class NovxFile(File):
             for path in prjItm.links:
                 xmlLink = ET.SubElement(xmlItm, 'Link')
                 xmlLink.set('path', path)
-                if prjItm.links[path]:
-                    xmlLink.text = prjItm.links[path]
 
     def _build_location_branch(self, xmlLoc, prjLoc):
         if prjLoc.title:
@@ -2347,8 +2345,6 @@ class NovxFile(File):
             for path in prjLoc.links:
                 xmlLink = ET.SubElement(xmlLoc, 'Link')
                 xmlLink.set('path', path)
-                if prjLoc.links[path]:
-                    xmlLink.text = prjLoc.links[path]
 
     def _build_project_branch(self, xmlProject):
         if self.novel.renumberChapters:
@@ -2462,10 +2458,7 @@ class NovxFile(File):
         for xmlLink in parent.iterfind('Link'):
             path = xmlLink.attrib.get('path', None)
             if path:
-                title = xmlLink.text
-                if title is None:
-                    title = _('Unnamed link')
-                links[path] = title
+                links[path] = None
         return links
 
     def _postprocess_xml_file(self, filePath):
@@ -3098,7 +3091,7 @@ class Novel(BasicElement):
                         self.languages.append(language)
 
     def check_locale(self):
-        if not self._languageCode:
+        if not self._languageCode or self._languageCode == 'None':
             try:
                 sysLng, sysCtr = locale.getlocale()[0].split('_')
             except:
@@ -3231,7 +3224,7 @@ class NvTree:
 
 
 
-def yw2novx(sourcePath):
+def yw_novx(sourcePath):
     path, extension = os.path.splitext(sourcePath)
     if extension != '.yw7':
         raise ValueError(f'File must be .yw7 type, but is "{extension}".')
@@ -3294,7 +3287,7 @@ def convert(sourcePath):
                     novxPath = f'{bookPath}.novx'
                     if not os.path.isfile(novxPath):
 
-                        yw2novx(yw7Path)
+                        yw_novx(yw7Path)
                     ET.SubElement(targetElement, 'Path').text = novxPath
 
     pathRoot , extension = os.path.splitext(sourcePath)

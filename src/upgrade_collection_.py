@@ -12,7 +12,7 @@ import os
 import xml.etree.ElementTree as ET
 
 from novxlib.xml.xml_indent import indent
-from yw2novx_ import yw2novx
+from yw_novx_ import yw_novx
 
 XML_HEADER = '''<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE COLLECTION SYSTEM "nvcx_1_0.dtd">
@@ -63,7 +63,7 @@ def convert(sourcePath):
                     if not os.path.isfile(novxPath):
 
                         # Convert book to .novx.
-                        yw2novx(yw7Path)
+                        yw_novx(yw7Path)
                     ET.SubElement(targetElement, 'Path').text = novxPath
 
     pathRoot , extension = os.path.splitext(sourcePath)
