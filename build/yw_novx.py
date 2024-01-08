@@ -851,7 +851,7 @@ def indent(elem, level=0):
 from xml import sax
 
 
-class NovxPParser(sax.ContentHandler):
+class NovxToYw7(sax.ContentHandler):
     NOTE_TYPES = {
         'footnote':'@fn',
         'endnote':'@en',
@@ -1069,7 +1069,7 @@ class Yw7File(File):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
 
-        self._novxParser = NovxPParser()
+        self._novxParser = NovxToYw7()
         self._noteCounter = 0
         self._noteNumber = 0
         if self.novel.languages is None:
