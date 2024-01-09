@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """novelyst collection upgrader
 
 - Convert a novelyst .nvcx collection file to .nvcx format.

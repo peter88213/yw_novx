@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """novelyst collection upgrader
 
 - Convert a novelyst .nvcx collection file to .nvcx format.
@@ -27,6 +28,7 @@ def indent(elem, level=0):
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
+#!/usr/bin/python3
 SUFFIX = ''
 
 

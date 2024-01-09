@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """Convert yw7 to novx.
 
 Copyright (c) 2024 Peter Triesberger
