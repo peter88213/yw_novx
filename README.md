@@ -36,7 +36,9 @@ In addition, *.novx* files are automatically generated for all *.yw7* projects c
 
 ## Download
 
-Save the file [upgrade_collection.py](https://raw.githubusercontent.com/peter88213/yw_novx/main/build/upgrade_collection.py).
+Save the files [upgrade_collection.py](https://raw.githubusercontent.com/peter88213/yw_novx/main/build/upgrade_collection.py) 
+and [yw_novx.py](https://raw.githubusercontent.com/peter88213/yw_novx/main/build/yw_novx.py). Both files must be
+located in the same directory. 
 
 ## Usage
 
