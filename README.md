@@ -1,6 +1,6 @@
 # Convert *novelyst* projects and collections for *noveltree* 
 
-The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration from [novelyst](https://peter88213.github.io/novelyst/) to [noveltree](https://peter88213.github.io/noveltree/).
+The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration from [novelyst](https://peter88213.github.io/novelyst/) to [noveltree](https://github.com/peter88213/noveltree).
 
 ## Requirements
 
@@ -9,7 +9,7 @@ The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration fro
 # yw_novx
 
 The *yw_novx.py* script converts a single *.yw7* file to the *.novx* format and vice versa.
-It is a stand-alone alternative to the [noveltree_yw7](https://peter88213.github.io/noveltree_yw7) plugin, 
+It is a stand-alone alternative to the [noveltree_yw7](https://github.com/peter88213/noveltree_yw7) plugin, 
 mainly intended for converting larger quantities of project files, e.g. by scripting.
 
 ## Download
@@ -31,7 +31,7 @@ usage: `yw_novx.py Sourcefile`
 
 If you have got a book/series collection created with the *novelyst_collection* plugin,
 you can convert it to the new *.nvcx* format for the 
-[noveltree_collection](https://peter88213.github.io/noveltree_collection) plugin.
+[noveltree_collection](https://github.com/peter88213/noveltree_collection) plugin.
 In addition, *.novx* files are automatically generated for all *.yw7* projects contained in the collection. 
 
 ## Download
