@@ -5,6 +5,7 @@
 	<projects>
 		<project>noveltree_collection</project>
 		<project>novxlib</project>
+		<project>nv_yw7</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

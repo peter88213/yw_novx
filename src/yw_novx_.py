@@ -10,7 +10,7 @@ SUFFIX = ''
 import sys
 import os
 
-from novxlib.yw.yw7_file import Yw7File
+from nvywlib.yw7_file import Yw7File
 from novxlib.novx.novx_file import NovxFile
 from novxlib.model.novel import Novel
 from novxlib.model.nv_tree import NvTree

@@ -22,15 +22,15 @@ import locale
 
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
-ARC_PREFIX = 'ac'
+PLOT_LINE_PREFIX = 'ac'
 SECTION_PREFIX = 'sc'
-ARC_POINT_PREFIX = 'ap'
+PLOT_POINT_PREFIX = 'ap'
 CHARACTER_PREFIX = 'cr'
 LOCATION_PREFIX = 'lc'
 ITEM_PREFIX = 'it'
 PRJ_NOTE_PREFIX = 'pn'
 CH_ROOT = f'{ROOT_PREFIX}{CHAPTER_PREFIX}'
-AC_ROOT = f'{ROOT_PREFIX}{ARC_PREFIX}'
+PL_ROOT = f'{ROOT_PREFIX}{PLOT_LINE_PREFIX}'
 CR_ROOT = f'{ROOT_PREFIX}{CHARACTER_PREFIX}'
 LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
 IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
@@ -54,7 +54,8 @@ PLOTLIST_SUFFIX = '_plotlist'
 PLOT_SUFFIX = '_plot'
 PROJECTNOTES_SUFFIX = '_projectnote_report'
 PROOF_SUFFIX = '_proof_tmp'
-SECTIONLIST_SUFFIX = '_sectionlist_tmp'
+SECTIONLIST_SUFFIX = '_sectionlist'
+GRID_SUFFIX = '_grid_tmp'
 SECTIONS_SUFFIX = '_sections_tmp'
 XREF_SUFFIX = '_xref'
 
@@ -69,7 +70,7 @@ try:
 except:
     CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
 try:
-    t = gettext.translation('noveltree', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+    t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
     _ = t.gettext
 except:
 
@@ -207,42 +208,6 @@ class BasicElement:
 
     def do_nothing(self):
         pass
-
-
-
-class Arc(BasicElement):
-
-    def __init__(self,
-            shortName=None,
-            **kwargs):
-        super().__init__(**kwargs)
-
-        self._shortName = shortName
-
-        self._sections = None
-
-    @property
-    def shortName(self):
-        return self._shortName
-
-    @shortName.setter
-    def shortName(self, newVal):
-        if self._shortName != newVal:
-            self._shortName = newVal
-            self.on_element_change()
-
-    @property
-    def sections(self):
-        try:
-            return self._sections[:]
-        except TypeError:
-            return None
-
-    @sections.setter
-    def sections(self, newVal):
-        if self._sections != newVal:
-            self._sections = newVal
-            self.on_element_change()
 
 
 
@@ -450,6 +415,76 @@ def create_id(elements, prefix=''):
         i += 1
     return f'{prefix}{i}'
 
+
+
+class PlotLine(BasicElement):
+
+    def __init__(self,
+            shortName=None,
+            sections=None,
+            **kwargs):
+        super().__init__(**kwargs)
+
+        self._shortName = shortName
+        self._sections = sections
+
+    @property
+    def shortName(self):
+        return self._shortName
+
+    @shortName.setter
+    def shortName(self, newVal):
+        if self._shortName != newVal:
+            self._shortName = newVal
+            self.on_element_change()
+
+    @property
+    def sections(self):
+        try:
+            return self._sections[:]
+        except TypeError:
+            return None
+
+    @sections.setter
+    def sections(self, newVal):
+        if self._sections != newVal:
+            self._sections = newVal
+            self.on_element_change()
+
+
+
+class PlotPoint(BasicElement):
+
+    def __init__(self,
+            sectionAssoc=None,
+            notes=None,
+            **kwargs):
+        super().__init__(**kwargs)
+
+        self._sectionAssoc = sectionAssoc
+
+        self._notes = notes
+
+    @property
+    def sectionAssoc(self):
+        return self._sectionAssoc
+
+    @sectionAssoc.setter
+    def sectionAssoc(self, newVal):
+        if self._sectionAssoc != newVal:
+            self._sectionAssoc = newVal
+            self.on_element_change()
+
+    @property
+    def notes(self):
+        return self._notes
+
+    @notes.setter
+    def notes(self, newVal):
+        if self._notes != newVal:
+            self._notes = newVal
+            self.on_element_change()
+
 from datetime import datetime, date, timedelta
 
 
@@ -474,6 +509,7 @@ class Section(BasicElement):
             goal=None,
             conflict=None,
             outcome=None,
+            plotNotes=None,
             scDate=None,
             scTime=None,
             day=None,
@@ -487,6 +523,7 @@ class Section(BasicElement):
         super().__init__(**kwargs)
         self._sectionContent = None
         self.wordCount = 0
+
         self._scType = scType
         self._scPacing = scPacing
         self._status = status
@@ -496,27 +533,24 @@ class Section(BasicElement):
         self._goal = goal
         self._conflict = conflict
         self._outcome = outcome
-
+        self._plotNotes = plotNotes
         try:
             self.weekDay = date.fromisoformat(scDate).weekday()
             self._date = scDate
         except:
             self.weekDay = None
             self._date = None
-
         self._time = scTime
-
         self._day = day
         self._lastsMinutes = lastsMinutes
         self._lastsHours = lastsHours
         self._lastsDays = lastsDays
-
         self._characters = characters
         self._locations = locations
         self._items = items
 
-        self.scArcs = []
-        self.scTurningPoints = {}
+        self.scPlotLines = []
+        self.scPlotPoints = {}
 
     @property
     def sectionContent(self):
@@ -623,6 +657,19 @@ class Section(BasicElement):
     def outcome(self, newVal):
         if self._outcome != newVal:
             self._outcome = newVal
+            self.on_element_change()
+
+    @property
+    def plotNotes(self):
+        try:
+            return dict(self._plotNotes)
+        except TypeError:
+            return None
+
+    @plotNotes.setter
+    def plotNotes(self, newVal):
+        if self._plotNotes != newVal:
+            self._plotNotes = newVal
             self.on_element_change()
 
     @property
@@ -798,40 +845,6 @@ class Section(BasicElement):
                 return False
 
         return True
-
-
-
-class TurningPoint(BasicElement):
-
-    def __init__(self,
-            sectionAssoc=None,
-            notes=None,
-            **kwargs):
-        super().__init__(**kwargs)
-
-        self._sectionAssoc = sectionAssoc
-
-        self._notes = notes
-
-    @property
-    def sectionAssoc(self):
-        return self._sectionAssoc
-
-    @sectionAssoc.setter
-    def sectionAssoc(self, newVal):
-        if self._sectionAssoc != newVal:
-            self._sectionAssoc = newVal
-            self.on_element_change()
-
-    @property
-    def notes(self):
-        return self._notes
-
-    @notes.setter
-    def notes(self, newVal):
-        if self._notes != newVal:
-            self._notes = newVal
-            self.on_element_change()
 
 
 
@@ -1044,7 +1057,7 @@ class Yw7File(File):
         self._read_projectvars(root)
         self._read_chapters(root)
         self._read_scenes(root)
-        self._read_projectnotes(root)
+        self._read_project_notes(root)
 
         xmlWclog = root.find('WCLog')
         if xmlWclog is not None:
@@ -1093,13 +1106,13 @@ class Yw7File(File):
                 index += 1
             return index
 
-        def build_scene_subtree(xmlScene, prjScn, turningPoint=False):
+        def build_scene_subtree(xmlScene, prjScn, plotPoint=False):
             i = 1
             i = set_element(xmlScene, 'Title', prjScn.title, i)
             if prjScn.desc is not None:
                 ET.SubElement(xmlScene, 'Desc').text = prjScn.desc
 
-            if not turningPoint:
+            if not plotPoint:
                 scTags = prjScn.tags
 
 
@@ -1109,7 +1122,7 @@ class Yw7File(File):
                 (True, '2'),
                 (True, '0'),
                 )
-            if turningPoint:
+            if plotPoint:
                 scType = 2
             elif prjScn.scType in (0, None):
                 scType = 0
@@ -1126,12 +1139,12 @@ class Yw7File(File):
                 ET.SubElement(xmlScene, 'Unused').text = '-1'
             if ySceneType is not None:
                 ET.SubElement(xmlSceneFields[scId], 'Field_SceneType').text = ySceneType
-            if turningPoint:
+            if plotPoint:
                 ET.SubElement(xmlScene, 'Status').text = '1'
             elif prjScn.status is not None:
                 ET.SubElement(xmlScene, 'Status').text = str(prjScn.status)
 
-            if turningPoint:
+            if plotPoint:
                 ET.SubElement(xmlScene, 'SceneContent')
                 return
 
@@ -1186,7 +1199,7 @@ class Yw7File(File):
                 for itId in prjScn.items:
                     ET.SubElement(xmlItems, 'ItemID').text = itId[2:]
 
-        def build_chapter_subtree(xmlChapter, prjChp, acId=None, chType=None):
+        def build_chapter_subtree(xmlChapter, prjChp, plId=None, chType=None):
 
             chTypeEncoding = (
                 (False, '0', '0'),
@@ -1195,7 +1208,7 @@ class Yw7File(File):
                 (True, '1', '0'),
                 )
             if chType is None:
-                if acId is not None:
+                if plId is not None:
                     chType = 2
                 elif prjChp.chType in (0, None):
                     chType = 0
@@ -1215,17 +1228,17 @@ class Yw7File(File):
 
             xmlChapterFields = ET.SubElement(xmlChapter, 'Fields')
             i += 1
-            if acId is None and prjChp.isTrash:
+            if plId is None and prjChp.isTrash:
                 ET.SubElement(xmlChapterFields, 'Field_IsTrash').text = '1'
 
-            if acId is None:
+            if plId is None:
                 fields = { 'Field_NoNumber': isTrue(prjChp.noNumber)}
             else:
-                fields = {'Field_ArcDefinition': self.novel.arcs[acId].shortName}
+                fields = {'Field_ArcDefinition': self.novel.plotLines[plId].shortName}
             for field in fields:
                 if fields[field]:
                     ET.SubElement(xmlChapterFields, field).text = fields[field]
-            if acId is None and prjChp.chLevel == 1:
+            if plId is None and prjChp.chLevel == 1:
                 ET.SubElement(xmlChapter, 'SectionStart').text = '-1'
                 i += 1
             i = set_element(xmlChapter, 'Type', yType, i)
@@ -1392,14 +1405,14 @@ class Yw7File(File):
             build_scene_subtree(xmlScene, self.novel.sections[scId])
 
         newScIds = {}
-        for tpId in self.novel.turningPoints:
+        for ppId in self.novel.plotPoints:
             scId = create_id(scIds, prefix=SECTION_PREFIX)
             scIds.append(scId)
-            newScIds[tpId] = scId
+            newScIds[ppId] = scId
             xmlScene = ET.SubElement(xmlScenes, 'SCENE')
             ET.SubElement(xmlScene, 'ID').text = scId[2:]
             xmlSceneFields[scId] = ET.SubElement(xmlScene, 'Fields')
-            build_scene_subtree(xmlScene, self.novel.turningPoints[tpId], turningPoint=True)
+            build_scene_subtree(xmlScene, self.novel.plotPoints[ppId], plotPoint=True)
 
         chIds = list(self.novel.tree.get_children(CH_ROOT))
         for chId in chIds:
@@ -1416,19 +1429,19 @@ class Yw7File(File):
         chIds.append(chId)
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER')
         ET.SubElement(xmlChapter, 'ID').text = chId[2:]
-        arcPart = Chapter(title=_('Arcs'), chLevel=1)
+        arcPart = Chapter(title=_('Plot lines'), chLevel=1)
         build_chapter_subtree(xmlChapter, arcPart, chType=2)
-        for acId in self.novel.tree.get_children(AC_ROOT):
+        for plId in self.novel.tree.get_children(PL_ROOT):
             chId = create_id(chIds, prefix=CHAPTER_PREFIX)
             chIds.append(chId)
             xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER')
             ET.SubElement(xmlChapter, 'ID').text = chId[2:]
-            build_chapter_subtree(xmlChapter, self.novel.arcs[acId], acId=acId)
-            srtScenes = self.novel.tree.get_children(acId)
+            build_chapter_subtree(xmlChapter, self.novel.plotLines[plId], plId=plId)
+            srtScenes = self.novel.tree.get_children(plId)
             if srtScenes:
                 xmlScnList = ET.SubElement(xmlChapter, 'Scenes')
-                for tpId in srtScenes:
-                    ET.SubElement(xmlScnList, 'ScID').text = newScIds[tpId][2:]
+                for ppId in srtScenes:
+                    ET.SubElement(xmlScnList, 'ScID').text = newScIds[ppId][2:]
 
         if self.novel.tree.get_children(PN_ROOT):
             xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
@@ -1437,23 +1450,23 @@ class Yw7File(File):
                 ET.SubElement(xmlProjectnote, 'ID').text = pnId[2:]
                 build_prjNote_subtree(xmlProjectnote, self.novel.projectNotes[pnId])
 
-        sectionArcs = {}
+        scPlotLines = {}
         sectionAssoc = {}
         for scId in scIds:
-            sectionArcs[scId] = []
+            scPlotLines[scId] = []
             sectionAssoc[scId] = []
-        for acId in self.novel.arcs:
-            for scId in self.novel.arcs[acId].sections:
-                sectionArcs[scId].append(self.novel.arcs[acId].shortName)
-            for tpId in self.novel.tree.get_children(acId):
-                sectionArcs[newScIds[tpId]].append(self.novel.arcs[acId].shortName)
-        for tpId in self.novel.turningPoints:
-            if self.novel.turningPoints[tpId].sectionAssoc:
-                sectionAssoc[self.novel.turningPoints[tpId].sectionAssoc].append(newScIds[tpId][2:])
-                sectionAssoc[newScIds[tpId]].append(self.novel.turningPoints[tpId].sectionAssoc[2:])
+        for plId in self.novel.plotLines:
+            for scId in self.novel.plotLines[plId].sections:
+                scPlotLines[scId].append(self.novel.plotLines[plId].shortName)
+            for ppId in self.novel.tree.get_children(plId):
+                scPlotLines[newScIds[ppId]].append(self.novel.plotLines[plId].shortName)
+        for ppId in self.novel.plotPoints:
+            if self.novel.plotPoints[ppId].sectionAssoc:
+                sectionAssoc[self.novel.plotPoints[ppId].sectionAssoc].append(newScIds[ppId][2:])
+                sectionAssoc[newScIds[ppId]].append(self.novel.plotPoints[ppId].sectionAssoc[2:])
         for scId in scIds:
             fields = {
-                'Field_SceneArcs': list_to_string(sectionArcs[scId]),
+                'Field_SceneArcs': list_to_string(scPlotLines[scId]),
                 'Field_SceneAssoc': list_to_string(sectionAssoc[scId]),
                 }
             for field in fields:
@@ -1639,7 +1652,7 @@ class Yw7File(File):
 
     def _read_chapters(self, root):
         self.novel.tree.delete_children(CH_ROOT)
-        self.novel.tree.delete_children(AC_ROOT)
+        self.novel.tree.delete_children(PL_ROOT)
         for xmlChapter in root.find('CHAPTERS'):
             prjChapter = Chapter()
 
@@ -1701,14 +1714,14 @@ class Yw7File(File):
                     scenes.append(scId)
 
             if shortName:
-                acId = f"{ARC_PREFIX}{xmlChapter.find('ID').text}"
-                self.novel.arcs[acId] = Arc()
-                self.novel.arcs[acId].title = prjChapter.title
-                self.novel.arcs[acId].desc = prjChapter.desc
-                self.novel.arcs[acId].shortName = shortName
-                self.novel.tree.append(AC_ROOT, acId)
+                plId = f"{PLOT_LINE_PREFIX}{xmlChapter.find('ID').text}"
+                self.novel.plotLines[plId] = PlotLine()
+                self.novel.plotLines[plId].title = prjChapter.title
+                self.novel.plotLines[plId].desc = prjChapter.desc
+                self.novel.plotLines[plId].shortName = shortName
+                self.novel.tree.append(PL_ROOT, plId)
                 for scId in scenes:
-                    self.novel.tree.append(acId, f'{ARC_POINT_PREFIX}{scId}')
+                    self.novel.tree.append(plId, f'{PLOT_POINT_PREFIX}{scId}')
                     self._ywApIds.append(scId)
             else:
                 chId = f"{CHAPTER_PREFIX}{xmlChapter.find('ID').text}"
@@ -1819,7 +1832,7 @@ class Yw7File(File):
         if field is not None:
             self.novel.countryCode = field
 
-    def _read_projectnotes(self, root):
+    def _read_project_notes(self, root):
         if root.find('PROJECTNOTES') is not None:
             for xmlProjectnote in root.find('PROJECTNOTES'):
                 if xmlProjectnote.find('ID') is not None:
@@ -1888,19 +1901,19 @@ class Yw7File(File):
 
             ywScnArcs = string_to_list(kwVarYw7.get('Field_SceneArcs', ''))
             for shortName in ywScnArcs:
-                for acId in self.novel.arcs:
-                    if self.novel.arcs[acId].shortName == shortName:
+                for plId in self.novel.plotLines:
+                    if self.novel.plotLines[plId].shortName == shortName:
                         if prjScn.scType == 0:
-                            arcSections = self.novel.arcs[acId].sections
+                            arcSections = self.novel.plotLines[plId].sections
                             if not arcSections:
                                 arcSections = [f"{SECTION_PREFIX}{xmlScene.find('ID').text}"]
                             else:
                                 arcSections.append(f"{SECTION_PREFIX}{xmlScene.find('ID').text}")
-                            self.novel.arcs[acId].sections = arcSections
+                            self.novel.plotLines[plId].sections = arcSections
                         break
 
             ywScnAssocs = string_to_list(kwVarYw7.get('Field_SceneAssoc', ''))
-            prjScn.turningPoints = [f'{ARC_POINT_PREFIX}{turningPoint}' for turningPoint in ywScnAssocs]
+            prjScn.plotPoints = [f'{PLOT_POINT_PREFIX}{plotPoint}' for plotPoint in ywScnAssocs]
 
             if kwVarYw7.get('Field_CustomAR', None) is not None:
                 prjScn.scPacing = 2
@@ -2010,12 +2023,12 @@ class Yw7File(File):
 
             ywScId = xmlScene.find('ID').text
             if ywScId in self._ywApIds:
-                ptId = f"{ARC_POINT_PREFIX}{ywScId}"
-                self.novel.turningPoints[ptId] = TurningPoint(title=prjScn.title,
+                ppId = f"{PLOT_POINT_PREFIX}{ywScId}"
+                self.novel.plotPoints[ppId] = PlotPoint(title=prjScn.title,
                                                       desc=prjScn.desc
                                                       )
                 if ywScnAssocs:
-                    self.novel.turningPoints[ptId].sectionAssoc = f'{SECTION_PREFIX}{ywScnAssocs[0]}'
+                    self.novel.plotPoints[ppId].sectionAssoc = f'{SECTION_PREFIX}{ywScnAssocs[0]}'
             else:
                 if prjScn.tags and self.STAGE_MARKER in prjScn.tags:
                     prjScn.scType = 3
@@ -2080,14 +2093,14 @@ def xml_element_to_text(xmlElement):
 
 
 class NovxFile(File):
-    DESCRIPTION = _('noveltree project')
+    DESCRIPTION = _('novelibre project')
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
-    MINOR_VERSION = 0
+    MINOR_VERSION = 1
 
-    XML_HEADER = '''<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE novx SYSTEM "novx_1_0.dtd">
+    XML_HEADER = f'''<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">
 <?xml-stylesheet href="novx.css" type="text/css"?>
 '''
 
@@ -2132,13 +2145,13 @@ class NovxFile(File):
             raise Error(f'{_("No valid version found in file")}: "{norm_path(self.filePath)}".')
 
         if majorVersion > self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer noveltree version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with a newer novelibre version.').format(norm_path(self.filePath)))
 
         elif majorVersion < self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with an outdated noveltree version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with an outdated novelibre version.').format(norm_path(self.filePath)))
 
         elif minorVersion > self.MINOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer noveltree version.').format(norm_path(self.filePath)))
+            raise Error(_('The project "{}" was created with a newer novelibre version.').format(norm_path(self.filePath)))
 
         try:
             locale = xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
@@ -2151,8 +2164,8 @@ class NovxFile(File):
         self._read_items(xmlRoot)
         self._read_characters(xmlRoot)
         self._read_chapters(xmlRoot)
-        self._read_arcs(xmlRoot)
-        self._read_projectnotes(xmlRoot)
+        self._read_plot_lines(xmlRoot)
+        self._read_project_notes(xmlRoot)
         self.adjust_section_types()
 
         xmlWclog = xmlRoot.find('PROGRESS')
@@ -2186,35 +2199,35 @@ class NovxFile(File):
         self._write_element_tree(self)
         self._postprocess_xml_file(self.filePath)
 
-    def _build_arc_branch(self, xmlArcs, prjArc, acId):
-        xmlArc = ET.SubElement(xmlArcs, 'ARC', attrib={'id':acId})
-        if prjArc.title:
-            ET.SubElement(xmlArc, 'Title').text = prjArc.title
-        if prjArc.shortName:
-            ET.SubElement(xmlArc, 'ShortName').text = prjArc.shortName
-        if prjArc.desc:
-            xmlArc.append(text_to_xml_element('Desc', prjArc.desc))
+    def _build_plot_line_branch(self, xmlPlotLines, prjPlotLine, plId):
+        xmlPlotLine = ET.SubElement(xmlPlotLines, 'ARC', attrib={'id':plId})
+        if prjPlotLine.title:
+            ET.SubElement(xmlPlotLine, 'Title').text = prjPlotLine.title
+        if prjPlotLine.shortName:
+            ET.SubElement(xmlPlotLine, 'ShortName').text = prjPlotLine.shortName
+        if prjPlotLine.desc:
+            xmlPlotLine.append(text_to_xml_element('Desc', prjPlotLine.desc))
 
-        if prjArc.sections:
-            attrib = {'ids':' '.join(prjArc.sections)}
-            ET.SubElement(xmlArc, 'Sections', attrib=attrib)
+        if prjPlotLine.sections:
+            attrib = {'ids':' '.join(prjPlotLine.sections)}
+            ET.SubElement(xmlPlotLine, 'Sections', attrib=attrib)
 
-        for tpId in self.novel.tree.get_children(acId):
-            xmlPoint = ET.SubElement(xmlArc, 'POINT', attrib={'id':tpId})
-            self._build_turningPoint_branch(xmlPoint, self.novel.turningPoints[tpId])
+        for ppId in self.novel.tree.get_children(plId):
+            xmlPlotPoint = ET.SubElement(xmlPlotLine, 'POINT', attrib={'id':ppId})
+            self._build_plot_point_branch(xmlPlotPoint, self.novel.plotPoints[ppId])
 
-        return xmlArc
+        return xmlPlotLine
 
-    def _build_turningPoint_branch(self, xmlPoint, prjTurningPoint):
-        if prjTurningPoint.title:
-            ET.SubElement(xmlPoint, 'Title').text = prjTurningPoint.title
-        if prjTurningPoint.desc:
-            xmlPoint.append(text_to_xml_element('Desc', prjTurningPoint.desc))
-        if prjTurningPoint.notes:
-            xmlPoint.append(text_to_xml_element('Notes', prjTurningPoint.notes))
+    def _build_plot_point_branch(self, xmlPlotPoint, prjPlotPoint):
+        if prjPlotPoint.title:
+            ET.SubElement(xmlPlotPoint, 'Title').text = prjPlotPoint.title
+        if prjPlotPoint.desc:
+            xmlPlotPoint.append(text_to_xml_element('Desc', prjPlotPoint.desc))
+        if prjPlotPoint.notes:
+            xmlPlotPoint.append(text_to_xml_element('Notes', prjPlotPoint.notes))
 
-        if prjTurningPoint.sectionAssoc:
-            ET.SubElement(xmlPoint, 'Section', attrib={'id': prjTurningPoint.sectionAssoc})
+        if prjPlotPoint.sectionAssoc:
+            ET.SubElement(xmlPlotPoint, 'Section', attrib={'id': prjPlotPoint.sectionAssoc})
 
     def _build_chapter_branch(self, xmlChapters, prjChp, chId):
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER', attrib={'id':chId})
@@ -2288,14 +2301,14 @@ class NovxFile(File):
             xmlItm = ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId})
             self._build_item_branch(xmlItm, self.novel.items[itId])
 
-        xmlArcs = ET.SubElement(root, 'ARCS')
-        for acId in self.novel.tree.get_children(AC_ROOT):
-            self._build_arc_branch(xmlArcs, self.novel.arcs[acId], acId)
+        xmlPlotLines = ET.SubElement(root, 'ARCS')
+        for plId in self.novel.tree.get_children(PL_ROOT):
+            self._build_plot_line_branch(xmlPlotLines, self.novel.plotLines[plId], plId)
 
-        xmlProjectnotes = ET.SubElement(root, 'PROJECTNOTES')
+        xmlProjectNotes = ET.SubElement(root, 'PROJECTNOTES')
         for pnId in self.novel.tree.get_children(PN_ROOT):
-            xmlProjectnote = ET.SubElement(xmlProjectnotes, 'PROJECTNOTE', attrib={'id':pnId})
-            self._build_projectnotes_branch(xmlProjectnote, self.novel.projectNotes[pnId])
+            xmlProjectNote = ET.SubElement(xmlProjectNotes, 'PROJECTNOTE', attrib={'id':pnId})
+            self._build_project_notes_branch(xmlProjectNote, self.novel.projectNotes[pnId])
 
         if self.wcLog:
             xmlWcLog = ET.SubElement(root, 'PROGRESS')
@@ -2390,11 +2403,11 @@ class NovxFile(File):
         if self.novel.referenceDate:
             ET.SubElement(xmlProject, 'ReferenceDate').text = self.novel.referenceDate
 
-    def _build_projectnotes_branch(self, xmlProjectnote, projectNote):
+    def _build_project_notes_branch(self, xmlProjectNote, projectNote):
         if projectNote.title:
-            ET.SubElement(xmlProjectnote, 'Title').text = projectNote.title
+            ET.SubElement(xmlProjectNote, 'Title').text = projectNote.title
         if projectNote.desc:
-            xmlProjectnote.append(text_to_xml_element('Desc', projectNote.desc))
+            xmlProjectNote.append(text_to_xml_element('Desc', projectNote.desc))
 
     def _build_section_branch(self, xmlSection, prjScn):
         if prjScn.scType:
@@ -2415,6 +2428,13 @@ class NovxFile(File):
             xmlSection.append(text_to_xml_element('Conflict', prjScn.conflict))
         if prjScn.outcome:
             xmlSection.append(text_to_xml_element('Outcome', prjScn.outcome))
+        if prjScn.plotNotes:
+            xmlPlotNotes = ET.SubElement(xmlSection, 'PlotNotes')
+            for plId in prjScn.plotNotes:
+                if plId in prjScn.scPlotLines:
+                    xmlPlotNote = text_to_xml_element('PlotlineNotes', prjScn.plotNotes[plId])
+                    xmlPlotNote.set('id', plId)
+                    xmlPlotNotes.append(xmlPlotNote)
         if prjScn.notes:
             xmlSection.append(text_to_xml_element('Notes', prjScn.notes))
         tagStr = list_to_string(prjScn.tags)
@@ -2467,42 +2487,42 @@ class NovxFile(File):
         except:
             raise Error(f'{_("Cannot write file")}: "{norm_path(filePath)}".')
 
-    def _read_arcs(self, root):
+    def _read_plot_lines(self, root):
         try:
-            for xmlArc in root.find('ARCS'):
-                acId = xmlArc.attrib['id']
-                self.novel.arcs[acId] = Arc(on_element_change=self.on_element_change)
-                self.novel.arcs[acId].title = get_element_text(xmlArc, 'Title')
-                self.novel.arcs[acId].desc = xml_element_to_text(xmlArc.find('Desc'))
-                self.novel.arcs[acId].shortName = get_element_text(xmlArc, 'ShortName')
-                self.novel.tree.append(AC_ROOT, acId)
-                for xmlPoint in xmlArc.iterfind('POINT'):
-                    tpId = xmlPoint.attrib['id']
-                    self._read_turningPoint(xmlPoint, tpId, acId)
-                    self.novel.tree.append(acId, tpId)
+            for xmlPlotLine in root.find('ARCS'):
+                plId = xmlPlotLine.attrib['id']
+                self.novel.plotLines[plId] = PlotLine(on_element_change=self.on_element_change)
+                self.novel.plotLines[plId].title = get_element_text(xmlPlotLine, 'Title')
+                self.novel.plotLines[plId].desc = xml_element_to_text(xmlPlotLine.find('Desc'))
+                self.novel.plotLines[plId].shortName = get_element_text(xmlPlotLine, 'ShortName')
+                self.novel.tree.append(PL_ROOT, plId)
+                for xmlPlotPoint in xmlPlotLine.iterfind('POINT'):
+                    ppId = xmlPlotPoint.attrib['id']
+                    self._read_plot_point(xmlPlotPoint, ppId, plId)
+                    self.novel.tree.append(plId, ppId)
 
                 acSections = []
-                xmlSections = xmlArc.find('Sections')
+                xmlSections = xmlPlotLine.find('Sections')
                 if xmlSections is not None:
                     scIds = xmlSections.get('ids', None)
                     for scId in string_to_list(scIds, divider=' '):
                         if scId and scId in self.novel.sections:
                             acSections.append(scId)
-                            self.novel.sections[scId].scArcs.append(acId)
-                self.novel.arcs[acId].sections = acSections
+                            self.novel.sections[scId].scPlotLines.append(plId)
+                self.novel.plotLines[plId].sections = acSections
         except TypeError:
             pass
 
-    def _read_turningPoint(self, xmlPoint, tpId, acId):
-        self.novel.turningPoints[tpId] = TurningPoint(on_element_change=self.on_element_change)
-        self.novel.turningPoints[tpId].title = get_element_text(xmlPoint, 'Title')
-        self.novel.turningPoints[tpId].desc = xml_element_to_text(xmlPoint.find('Desc'))
-        self.novel.turningPoints[tpId].notes = xml_element_to_text(xmlPoint.find('Notes'))
+    def _read_plot_point(self, xmlPoint, ppId, plId):
+        self.novel.plotPoints[ppId] = PlotPoint(on_element_change=self.on_element_change)
+        self.novel.plotPoints[ppId].title = get_element_text(xmlPoint, 'Title')
+        self.novel.plotPoints[ppId].desc = xml_element_to_text(xmlPoint.find('Desc'))
+        self.novel.plotPoints[ppId].notes = xml_element_to_text(xmlPoint.find('Notes'))
         xmlSectionAssoc = xmlPoint.find('Section')
         if xmlSectionAssoc is not None:
             scId = xmlSectionAssoc.get('id', None)
-            self.novel.turningPoints[tpId].sectionAssoc = scId
-            self.novel.sections[scId].scTurningPoints[tpId] = acId
+            self.novel.plotPoints[ppId].sectionAssoc = scId
+            self.novel.sections[scId].scPlotPoints[ppId] = plId
 
     def _read_chapters(self, root, partType=0):
         try:
@@ -2617,13 +2637,13 @@ class NovxFile(File):
             self.novel.wordTarget = int(xmlProject.find('WordTarget').text)
         self.novel.referenceDate = get_element_text(xmlProject, 'ReferenceDate')
 
-    def _read_projectnotes(self, root):
+    def _read_project_notes(self, root):
         try:
-            for xmlProjectnote in root.find('PROJECTNOTES'):
-                pnId = xmlProjectnote.attrib['id']
+            for xmlProjectNote in root.find('PROJECTNOTES'):
+                pnId = xmlProjectNote.attrib['id']
                 self.novel.projectNotes[pnId] = BasicElement()
-                self.novel.projectNotes[pnId].title = get_element_text(xmlProjectnote, 'Title')
-                self.novel.projectNotes[pnId].desc = xml_element_to_text(xmlProjectnote.find('Desc'))
+                self.novel.projectNotes[pnId].title = get_element_text(xmlProjectNote, 'Title')
+                self.novel.projectNotes[pnId].desc = xml_element_to_text(xmlProjectNote.find('Desc'))
                 self.novel.tree.append(PN_ROOT, pnId)
         except TypeError:
             pass
@@ -2702,9 +2722,18 @@ class NovxFile(File):
         self.novel.sections[scId].lastsDays = get_element_text(xmlSection, 'LastsDays')
         self.novel.sections[scId].lastsHours = get_element_text(xmlSection, 'LastsHours')
         self.novel.sections[scId].lastsMinutes = get_element_text(xmlSection, 'LastsMinutes')
+
         self.novel.sections[scId].goal = xml_element_to_text(xmlSection.find('Goal'))
         self.novel.sections[scId].conflict = xml_element_to_text(xmlSection.find('Conflict'))
         self.novel.sections[scId].outcome = xml_element_to_text(xmlSection.find('Outcome'))
+
+        xmlPlotNotes = xmlSection.find('PlotNotes')
+        if xmlPlotNotes is not None:
+            plotNotes = {}
+            for xmlPlotLineNote in xmlPlotNotes.iterfind('PlotlineNotes'):
+                plId = xmlPlotLineNote.get('id', None)
+                plotNotes[plId] = xml_element_to_text(xmlPlotLineNote)
+            self.novel.sections[scId].plotNotes = plotNotes
 
         scCharacters = []
         xmlCharacters = xmlSection.find('Characters')
@@ -2813,9 +2842,9 @@ class Novel(BasicElement):
 
         self.chapters = {}
         self.sections = {}
-        self.turningPoints = {}
+        self.plotPoints = {}
         self.languages = None
-        self.arcs = {}
+        self.plotLines = {}
         self.locations = {}
         self.items = {}
         self.characters = {}
@@ -3057,16 +3086,16 @@ class Novel(BasicElement):
                     self._referenceDate = newVal
                     self.on_element_change()
 
-    def update_section_arcs(self):
+    def update_plot_lines(self):
         for scId in self.sections:
-            self.sections[scId].scTurningPoints = {}
-            self.sections[scId].scArcs = []
-            for acId in self.arcs:
-                if scId in self.arcs[acId].sections:
-                    self.sections[scId].scArcs.append(acId)
-                    for tpId in self.tree.get_children(acId):
-                        if self.turningPoints[tpId].sectionAssoc == scId:
-                            self.sections[scId].scTurningPoints[tpId] = acId
+            self.sections[scId].scPlotPoints = {}
+            self.sections[scId].scPlotLines = []
+            for plId in self.plotLines:
+                if scId in self.plotLines[plId].sections:
+                    self.sections[scId].scPlotLines.append(plId)
+                    for ppId in self.tree.get_children(plId):
+                        if self.plotPoints[ppId].sectionAssoc == scId:
+                            self.sections[scId].scPlotPoints[ppId] = plId
                             break
 
     def get_languages(self):
@@ -3118,7 +3147,7 @@ class NvTree:
             CR_ROOT:[],
             LC_ROOT:[],
             IT_ROOT:[],
-            AC_ROOT:[],
+            PL_ROOT:[],
             PN_ROOT:[],
             }
         self.srtSections = {}
@@ -3129,14 +3158,14 @@ class NvTree:
             self.roots[parent].append(iid)
             if parent == CH_ROOT:
                 self.srtSections[iid] = []
-            elif parent == AC_ROOT:
+            elif parent == PL_ROOT:
                 self.srtTurningPoints[iid] = []
         elif parent.startswith(CHAPTER_PREFIX):
             try:
                 self.srtSections[parent].append(iid)
             except:
                 self.srtSections[parent] = [iid]
-        elif parent.startswith(ARC_PREFIX):
+        elif parent.startswith(PLOT_LINE_PREFIX):
             try:
                 self.srtTurningPoints[parent].append(iid)
             except:
@@ -3150,11 +3179,11 @@ class NvTree:
             self.roots[parent] = []
             if parent == CH_ROOT:
                 self.srtSections = {}
-            elif parent == AC_ROOT:
+            elif parent == PL_ROOT:
                 self.srtTurningPoints = {}
         elif parent.startswith(CHAPTER_PREFIX):
             self.srtSections[parent] = []
-        elif parent.startswith(ARC_PREFIX):
+        elif parent.startswith(PLOT_LINE_PREFIX):
             self.srtTurningPoints[parent] = []
 
     def get_children(self, item):
@@ -3164,7 +3193,7 @@ class NvTree:
         elif item.startswith(CHAPTER_PREFIX):
             return self.srtSections.get(item, [])
 
-        elif item.startswith(ARC_PREFIX):
+        elif item.startswith(PLOT_LINE_PREFIX):
             return self.srtTurningPoints.get(item, [])
 
     def index(self, item):
@@ -3175,14 +3204,14 @@ class NvTree:
             self.roots[parent].insert(index, iid)
             if parent == CH_ROOT:
                 self.srtSections[iid] = []
-            elif parent == AC_ROOT:
+            elif parent == PL_ROOT:
                 self.srtTurningPoints[iid] = []
         elif parent.startswith(CHAPTER_PREFIX):
             try:
                 self.srtSections[parent].insert(index, iid)
             except:
                 self.srtSections[parent] = [iid]
-        elif parent.startswith(ARC_PREFIX):
+        elif parent.startswith(PLOT_LINE_PREFIX):
             try:
                 self.srtTurningPoints.insert(index, iid)
             except:
@@ -3211,11 +3240,11 @@ class NvTree:
             self.roots[item] = newchildren[:]
             if item == CH_ROOT:
                 self.srtSections = {}
-            elif item == AC_ROOT:
+            elif item == PL_ROOT:
                 self.srtTurningPoints = {}
         elif item.startswith(CHAPTER_PREFIX):
             self.srtSections[item] = newchildren[:]
-        elif item.startswith(ARC_PREFIX):
+        elif item.startswith(PLOT_LINE_PREFIX):
             self.srtTurningPoints[item] = newchildren[:]
 
 
