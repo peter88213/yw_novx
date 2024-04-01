@@ -17,6 +17,7 @@ import re
 from abc import ABC
 from urllib.parse import quote
 
+from calendar import day_name, month_name
 import gettext
 import locale
 
@@ -64,6 +65,7 @@ class Error(Exception):
     pass
 
 
+locale.setlocale(locale.LC_TIME, "")
 LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
 try:
     CURRENT_LANGUAGE = locale.getlocale()[0][:2]
@@ -77,15 +79,8 @@ except:
     def _(message):
         return message
 
-WEEKDAYS = [
-    _('Monday'),
-    _('Tuesday'),
-    _('Wednesday'),
-    _('Thursday'),
-    _('Friday'),
-    _('Saturday'),
-    _('Sunday')
-    ]
+WEEKDAYS = day_name
+MONTHS = month_name
 
 
 def norm_path(path):
@@ -178,13 +173,15 @@ class BasicElement:
     def __init__(self,
             on_element_change=None,
             title=None,
-            desc=None):
+            desc=None,
+            links=None):
         if on_element_change is None:
             self.on_element_change = self.do_nothing
         else:
             self.on_element_change = on_element_change
         self._title = title
         self._desc = desc
+        self._links = links
 
     @property
     def title(self):
@@ -206,12 +203,45 @@ class BasicElement:
             self._desc = newVal
             self.on_element_change()
 
+    @property
+    def links(self):
+        try:
+            return self._links.copy()
+        except AttributeError:
+            return None
+
+    @links.setter
+    def links(self, newVal):
+        if self._links != newVal:
+            self._links = newVal
+            self.on_element_change()
+
     def do_nothing(self):
         pass
 
 
 
-class Chapter(BasicElement):
+class BasicElementNotes(BasicElement):
+
+    def __init__(self,
+            notes=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._notes = notes
+
+    @property
+    def notes(self):
+        return self._notes
+
+    @notes.setter
+    def notes(self, newVal):
+        if self._notes != newVal:
+            self._notes = newVal
+            self.on_element_change()
+
+
+
+class Chapter(BasicElementNotes):
 
     def __init__(self,
             chLevel=None,
@@ -266,27 +296,13 @@ class Chapter(BasicElement):
             self.on_element_change()
 
 
-class WorldElement(BasicElement):
+class BasicElementTags(BasicElementNotes):
 
     def __init__(self,
-            aka=None,
             tags=None,
-            links=None,
             **kwargs):
         super().__init__(**kwargs)
-        self._aka = aka
         self._tags = tags
-        self._links = links
-
-    @property
-    def aka(self):
-        return self._aka
-
-    @aka.setter
-    def aka(self, newVal):
-        if self._aka != newVal:
-            self._aka = newVal
-            self.on_element_change()
 
     @property
     def tags(self):
@@ -298,19 +314,24 @@ class WorldElement(BasicElement):
             self._tags = newVal
             self.on_element_change()
 
-    @property
-    def links(self):
-        try:
-            return self._links.copy()
-        except AttributeError:
-            return None
 
-    @links.setter
-    def links(self, newVal):
-        if self._links != newVal:
-            self._links = newVal
-            for linkPath in newVal:
-                self._links[linkPath] = os.path.split(linkPath)[1]
+
+class WorldElement(BasicElementTags):
+
+    def __init__(self,
+            aka=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._aka = aka
+
+    @property
+    def aka(self):
+        return self._aka
+
+    @aka.setter
+    def aka(self, newVal):
+        if self._aka != newVal:
+            self._aka = newVal
             self.on_element_change()
 
 
@@ -320,7 +341,6 @@ class Character(WorldElement):
     MINOR_MARKER = 'Minor'
 
     def __init__(self,
-            notes=None,
             bio=None,
             goals=None,
             fullName=None,
@@ -329,23 +349,12 @@ class Character(WorldElement):
             deathDate=None,
             **kwargs):
         super().__init__(**kwargs)
-        self._notes = notes
         self._bio = bio
         self._goals = goals
         self._fullName = fullName
         self._isMajor = isMajor
         self._birthDate = birthDate
         self._deathDate = deathDate
-
-    @property
-    def notes(self):
-        return self._notes
-
-    @notes.setter
-    def notes(self, newVal):
-        if self._notes != newVal:
-            self._notes = newVal
-            self.on_element_change()
 
     @property
     def bio(self):
@@ -417,7 +426,7 @@ def create_id(elements, prefix=''):
 
 
 
-class PlotLine(BasicElement):
+class PlotLine(BasicElementNotes):
 
     def __init__(self,
             shortName=None,
@@ -453,17 +462,14 @@ class PlotLine(BasicElement):
 
 
 
-class PlotPoint(BasicElement):
+class PlotPoint(BasicElementNotes):
 
     def __init__(self,
             sectionAssoc=None,
-            notes=None,
             **kwargs):
         super().__init__(**kwargs)
 
         self._sectionAssoc = sectionAssoc
-
-        self._notes = notes
 
     @property
     def sectionAssoc(self):
@@ -475,26 +481,24 @@ class PlotPoint(BasicElement):
             self._sectionAssoc = newVal
             self.on_element_change()
 
-    @property
-    def notes(self):
-        return self._notes
-
-    @notes.setter
-    def notes(self, newVal):
-        if self._notes != newVal:
-            self._notes = newVal
-            self.on_element_change()
-
 from datetime import datetime, date, timedelta
-
 
 ADDITIONAL_WORD_LIMITS = re.compile('--|—|–|\<\/p\>')
 
 NO_WORD_LIMITS = re.compile('\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>')
 
 
-class Section(BasicElement):
+class Section(BasicElementTags):
     PACING = ['A', 'R', 'C']
+
+    STATUS = [
+        None,
+        _('Outline'),
+        _('Draft'),
+        _('1st Edit'),
+        _('2nd Edit'),
+        _('Done')
+        ]
 
     NULL_DATE = '0001-01-01'
     NULL_TIME = '00:00:00'
@@ -503,8 +507,6 @@ class Section(BasicElement):
             scType=None,
             scPacing=None,
             status=None,
-            notes=None,
-            tags=None,
             appendToPrev=None,
             goal=None,
             conflict=None,
@@ -527,18 +529,19 @@ class Section(BasicElement):
         self._scType = scType
         self._scPacing = scPacing
         self._status = status
-        self._notes = notes
-        self._tags = tags
         self._appendToPrev = appendToPrev
         self._goal = goal
         self._conflict = conflict
         self._outcome = outcome
         self._plotNotes = plotNotes
         try:
-            self.weekDay = date.fromisoformat(scDate).weekday()
+            newDate = date.fromisoformat(scDate)
+            self._weekDay = newDate.weekday()
+            self._localeDate = newDate.strftime('%x')
             self._date = scDate
         except:
-            self.weekDay = None
+            self._weekDay = None
+            self._localeDate = None
             self._date = None
         self._time = scTime
         self._day = day
@@ -597,26 +600,6 @@ class Section(BasicElement):
     def status(self, newVal):
         if self._status != newVal:
             self._status = newVal
-            self.on_element_change()
-
-    @property
-    def notes(self):
-        return self._notes
-
-    @notes.setter
-    def notes(self, newVal):
-        if self._notes != newVal:
-            self._notes = newVal
-            self.on_element_change()
-
-    @property
-    def tags(self):
-        return self._tags
-
-    @tags.setter
-    def tags(self, newVal):
-        if self._tags != newVal:
-            self._tags = newVal
             self.on_element_change()
 
     @property
@@ -681,15 +664,30 @@ class Section(BasicElement):
         if self._date != newVal:
             if not newVal:
                 self._date = None
-                self.weekDay = None
+                self._weekDay = None
+                self._localeDate = None
+                self.on_element_change()
             else:
                 try:
-                    self.weekDay = date.fromisoformat(newVal).weekday()
+                    newDate = date.fromisoformat(newVal)
+                    self._weekDay = newDate.weekday()
                 except:
                     pass
                 else:
+                    try:
+                        self._localeDate = newDate.strftime('%x')
+                    except:
+                        self._localeDate = newVal
                     self._date = newVal
                     self.on_element_change()
+
+    @property
+    def weekDay(self):
+        return self._weekDay
+
+    @property
+    def localeDate(self):
+        return self._localeDate
 
     @property
     def time(self):
@@ -827,7 +825,7 @@ class Section(BasicElement):
                 self.date = date.isoformat(refDate + deltaDays)
                 self._day = None
             except:
-                self.date = ''
+                self.date = None
                 return False
 
         return True
@@ -837,35 +835,18 @@ class Section(BasicElement):
             try:
                 sectionDate = date.fromisoformat(self._date)
                 referenceDate = date.fromisoformat(referenceDate)
-                self.day = str((sectionDate - referenceDate).days)
-                self._date = None
-                self.weekDay = None
+                self._day = str((sectionDate - referenceDate).days)
+                self.date = None
             except:
-                self.day = ''
+                self._day = None
                 return False
 
         return True
 
-
-
-def indent(elem, level=0):
-    i = f'\n{level * "  "}'
-    if elem:
-        if not elem.text or not elem.text.strip():
-            elem.text = f'{i}  '
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
 from xml import sax
 
 
-class NovxToYw7(sax.ContentHandler):
+class NovxToShortcode(sax.ContentHandler):
     NOTE_TYPES = {
         'footnote':'@fn',
         'endnote':'@en',
@@ -939,6 +920,22 @@ class NovxToYw7(sax.ContentHandler):
         elif name in ('creator', 'date', 'note-citation'):
             self._paragraph = False
 
+
+
+def indent(elem, level=0):
+    i = f'\n{level * "  "}'
+    if elem:
+        if not elem.text or not elem.text.strip():
+            elem.text = f'{i}  '
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
 import xml.etree.ElementTree as ET
 
 
@@ -1083,7 +1080,7 @@ class Yw7File(File):
         if self.is_locked():
             raise Error(f'{_("yWriter seems to be open. Please close first")}.')
 
-        self._novxParser = NovxToYw7()
+        self._novxParser = NovxToShortcode()
         self._noteCounter = 0
         self._noteNumber = 0
         if self.novel.languages is None:
@@ -2097,7 +2094,7 @@ class NovxFile(File):
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
-    MINOR_VERSION = 1
+    MINOR_VERSION = 3
 
     XML_HEADER = f'''<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">
@@ -2199,38 +2196,9 @@ class NovxFile(File):
         self._write_element_tree(self)
         self._postprocess_xml_file(self.filePath)
 
-    def _build_plot_line_branch(self, xmlPlotLines, prjPlotLine, plId):
-        xmlPlotLine = ET.SubElement(xmlPlotLines, 'ARC', attrib={'id':plId})
-        if prjPlotLine.title:
-            ET.SubElement(xmlPlotLine, 'Title').text = prjPlotLine.title
-        if prjPlotLine.shortName:
-            ET.SubElement(xmlPlotLine, 'ShortName').text = prjPlotLine.shortName
-        if prjPlotLine.desc:
-            xmlPlotLine.append(text_to_xml_element('Desc', prjPlotLine.desc))
-
-        if prjPlotLine.sections:
-            attrib = {'ids':' '.join(prjPlotLine.sections)}
-            ET.SubElement(xmlPlotLine, 'Sections', attrib=attrib)
-
-        for ppId in self.novel.tree.get_children(plId):
-            xmlPlotPoint = ET.SubElement(xmlPlotLine, 'POINT', attrib={'id':ppId})
-            self._build_plot_point_branch(xmlPlotPoint, self.novel.plotPoints[ppId])
-
-        return xmlPlotLine
-
-    def _build_plot_point_branch(self, xmlPlotPoint, prjPlotPoint):
-        if prjPlotPoint.title:
-            ET.SubElement(xmlPlotPoint, 'Title').text = prjPlotPoint.title
-        if prjPlotPoint.desc:
-            xmlPlotPoint.append(text_to_xml_element('Desc', prjPlotPoint.desc))
-        if prjPlotPoint.notes:
-            xmlPlotPoint.append(text_to_xml_element('Notes', prjPlotPoint.notes))
-
-        if prjPlotPoint.sectionAssoc:
-            ET.SubElement(xmlPlotPoint, 'Section', attrib={'id': prjPlotPoint.sectionAssoc})
-
     def _build_chapter_branch(self, xmlChapters, prjChp, chId):
         xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER', attrib={'id':chId})
+
         if prjChp.chType:
             xmlChapter.set('type', str(prjChp.chType))
         if prjChp.chLevel == 1:
@@ -2239,41 +2207,38 @@ class NovxFile(File):
             xmlChapter.set('isTrash', '1')
         if prjChp.noNumber:
             xmlChapter.set('noNumber', '1')
-        if prjChp.title:
-            ET.SubElement(xmlChapter, 'Title').text = prjChp.title
-        if prjChp.desc:
-            xmlChapter.append(text_to_xml_element('Desc', prjChp.desc))
+
+        self._set_base_data(xmlChapter, prjChp)
+        self._set_notes(xmlChapter, prjChp)
+
         for scId in self.novel.tree.get_children(chId):
             xmlSection = ET.SubElement(xmlChapter, 'SECTION', attrib={'id':scId})
             self._build_section_branch(xmlSection, self.novel.sections[scId])
+
         return xmlChapter
 
     def _build_character_branch(self, xmlCrt, prjCrt):
+
         if prjCrt.isMajor:
             xmlCrt.set('major', '1')
-        if prjCrt.title:
-            ET.SubElement(xmlCrt, 'Title').text = prjCrt.title
+
+        self._set_base_data(xmlCrt, prjCrt)
+        self._set_notes(xmlCrt, prjCrt)
+        self._set_tags(xmlCrt, prjCrt)
+        self._set_aka(xmlCrt, prjCrt)
+
         if prjCrt.fullName:
             ET.SubElement(xmlCrt, 'FullName').text = prjCrt.fullName
-        if prjCrt.aka:
-            ET.SubElement(xmlCrt, 'Aka').text = prjCrt.aka
-        if prjCrt.desc:
-            xmlCrt.append(text_to_xml_element('Desc', prjCrt.desc))
+
         if prjCrt.bio:
             xmlCrt.append(text_to_xml_element('Bio', prjCrt.bio))
+
         if prjCrt.goals:
             xmlCrt.append(text_to_xml_element('Goals', prjCrt.goals))
-        if prjCrt.notes:
-            xmlCrt.append(text_to_xml_element('Notes', prjCrt.notes))
-        tagStr = list_to_string(prjCrt.tags)
-        if tagStr:
-            ET.SubElement(xmlCrt, 'Tags').text = tagStr
-        if prjCrt.links:
-            for path in prjCrt.links:
-                xmlLink = ET.SubElement(xmlCrt, 'Link')
-                xmlLink.set('path', path)
+
         if prjCrt.birthDate:
             ET.SubElement(xmlCrt, 'BirthDate').text = prjCrt.birthDate
+
         if prjCrt.deathDate:
             ET.SubElement(xmlCrt, 'DeathDate').text = prjCrt.deathDate
 
@@ -2327,36 +2292,48 @@ class NovxFile(File):
                 ET.SubElement(xmlWc, 'WithUnused').text = self.wcLog[wc][1]
 
     def _build_item_branch(self, xmlItm, prjItm):
-        if prjItm.title:
-            ET.SubElement(xmlItm, 'Title').text = prjItm.title
-        if prjItm.aka:
-            ET.SubElement(xmlItm, 'Aka').text = prjItm.aka
-        if prjItm.desc:
-            xmlItm.append(text_to_xml_element('Desc', prjItm.desc))
-        tagStr = list_to_string(prjItm.tags)
-        if tagStr:
-            ET.SubElement(xmlItm, 'Tags').text = tagStr
-        if prjItm.links:
-            for path in prjItm.links:
-                xmlLink = ET.SubElement(xmlItm, 'Link')
-                xmlLink.set('path', path)
+
+        self._set_base_data(xmlItm, prjItm)
+        self._set_notes(xmlItm, prjItm)
+        self._set_tags(xmlItm, prjItm)
+        self._set_aka(xmlItm, prjItm)
 
     def _build_location_branch(self, xmlLoc, prjLoc):
-        if prjLoc.title:
-            ET.SubElement(xmlLoc, 'Title').text = prjLoc.title
-        if prjLoc.aka:
-            ET.SubElement(xmlLoc, 'Aka').text = prjLoc.aka
-        if prjLoc.desc:
-            xmlLoc.append(text_to_xml_element('Desc', prjLoc.desc))
-        tagStr = list_to_string(prjLoc.tags)
-        if tagStr:
-            ET.SubElement(xmlLoc, 'Tags').text = tagStr
-        if prjLoc.links:
-            for path in prjLoc.links:
-                xmlLink = ET.SubElement(xmlLoc, 'Link')
-                xmlLink.set('path', path)
+
+        self._set_base_data(xmlLoc, prjLoc)
+        self._set_notes(xmlLoc, prjLoc)
+        self._set_tags(xmlLoc, prjLoc)
+        self._set_aka(xmlLoc, prjLoc)
+
+    def _build_plot_line_branch(self, xmlPlotLines, prjPlotLine, plId):
+        xmlPlotLine = ET.SubElement(xmlPlotLines, 'ARC', attrib={'id':plId})
+
+        self._set_base_data(xmlPlotLine, prjPlotLine)
+        self._set_notes(xmlPlotLine, prjPlotLine)
+
+        if prjPlotLine.shortName:
+            ET.SubElement(xmlPlotLine, 'ShortName').text = prjPlotLine.shortName
+
+        if prjPlotLine.sections:
+            attrib = {'ids':' '.join(prjPlotLine.sections)}
+            ET.SubElement(xmlPlotLine, 'Sections', attrib=attrib)
+
+        for ppId in self.novel.tree.get_children(plId):
+            xmlPlotPoint = ET.SubElement(xmlPlotLine, 'POINT', attrib={'id':ppId})
+            self._build_plot_point_branch(xmlPlotPoint, self.novel.plotPoints[ppId])
+
+        return xmlPlotLine
+
+    def _build_plot_point_branch(self, xmlPlotPoint, prjPlotPoint):
+
+        self._set_base_data(xmlPlotPoint, prjPlotPoint)
+        self._set_notes(xmlPlotPoint, prjPlotPoint)
+
+        if prjPlotPoint.sectionAssoc:
+            ET.SubElement(xmlPlotPoint, 'Section', attrib={'id': prjPlotPoint.sectionAssoc})
 
     def _build_project_branch(self, xmlProject):
+
         if self.novel.renumberChapters:
             xmlProject.set('renumberChapters', '1')
         if self.novel.renumberParts:
@@ -2372,44 +2349,47 @@ class NovxFile(File):
         if self.novel.workPhase is not None:
             xmlProject.set('workPhase', str(self.novel.workPhase))
 
-        if self.novel.title:
-            ET.SubElement(xmlProject, 'Title').text = self.novel.title
+        self._set_base_data(xmlProject, self.novel)
+
         if self.novel.authorName:
             ET.SubElement(xmlProject, 'Author').text = self.novel.authorName
-        if self.novel.desc:
-            xmlProject.append(text_to_xml_element('Desc', self.novel.desc))
+
         if self.novel.chapterHeadingPrefix:
             ET.SubElement(xmlProject, 'ChapterHeadingPrefix').text = self.novel.chapterHeadingPrefix
         if self.novel.chapterHeadingSuffix:
             ET.SubElement(xmlProject, 'ChapterHeadingSuffix').text = self.novel.chapterHeadingSuffix
+
         if self.novel.partHeadingPrefix:
             ET.SubElement(xmlProject, 'PartHeadingPrefix').text = self.novel.partHeadingPrefix
         if self.novel.partHeadingSuffix:
             ET.SubElement(xmlProject, 'PartHeadingSuffix').text = self.novel.partHeadingSuffix
+
         if self.novel.customGoal:
             ET.SubElement(xmlProject, 'CustomGoal').text = self.novel.customGoal
         if self.novel.customConflict:
             ET.SubElement(xmlProject, 'CustomConflict').text = self.novel.customConflict
         if self.novel.customOutcome:
             ET.SubElement(xmlProject, 'CustomOutcome').text = self.novel.customOutcome
+
         if self.novel.customChrBio:
             ET.SubElement(xmlProject, 'CustomChrBio').text = self.novel.customChrBio
         if self.novel.customChrGoals:
             ET.SubElement(xmlProject, 'CustomChrGoals').text = self.novel.customChrGoals
+
         if self.novel.wordCountStart:
             ET.SubElement(xmlProject, 'WordCountStart').text = str(self.novel.wordCountStart)
         if self.novel.wordTarget:
             ET.SubElement(xmlProject, 'WordTarget').text = str(self.novel.wordTarget)
+
         if self.novel.referenceDate:
             ET.SubElement(xmlProject, 'ReferenceDate').text = self.novel.referenceDate
 
     def _build_project_notes_branch(self, xmlProjectNote, projectNote):
-        if projectNote.title:
-            ET.SubElement(xmlProjectNote, 'Title').text = projectNote.title
-        if projectNote.desc:
-            xmlProjectNote.append(text_to_xml_element('Desc', projectNote.desc))
+
+        self._set_base_data(xmlProjectNote, projectNote)
 
     def _build_section_branch(self, xmlSection, prjScn):
+
         if prjScn.scType:
             xmlSection.set('type', str(prjScn.scType))
         if prjScn.status > 1:
@@ -2418,16 +2398,18 @@ class NovxFile(File):
             xmlSection.set('pacing', str(prjScn.scPacing))
         if prjScn.appendToPrev:
             xmlSection.set('append', '1')
-        if prjScn.title:
-            ET.SubElement(xmlSection, 'Title').text = prjScn.title
-        if prjScn.desc:
-            xmlSection.append(text_to_xml_element('Desc', prjScn.desc))
+
+        self._set_base_data(xmlSection, prjScn)
+        self._set_notes(xmlSection, prjScn)
+        self._set_tags(xmlSection, prjScn)
+
         if prjScn.goal:
             xmlSection.append(text_to_xml_element('Goal', prjScn.goal))
         if prjScn.conflict:
             xmlSection.append(text_to_xml_element('Conflict', prjScn.conflict))
         if prjScn.outcome:
             xmlSection.append(text_to_xml_element('Outcome', prjScn.outcome))
+
         if prjScn.plotNotes:
             xmlPlotNotes = ET.SubElement(xmlSection, 'PlotNotes')
             for plId in prjScn.plotNotes:
@@ -2435,11 +2417,6 @@ class NovxFile(File):
                     xmlPlotNote = text_to_xml_element('PlotlineNotes', prjScn.plotNotes[plId])
                     xmlPlotNote.set('id', plId)
                     xmlPlotNotes.append(xmlPlotNote)
-        if prjScn.notes:
-            xmlSection.append(text_to_xml_element('Notes', prjScn.notes))
-        tagStr = list_to_string(prjScn.tags)
-        if tagStr:
-            ET.SubElement(xmlSection, 'Tags').text = tagStr
 
         if prjScn.date:
             ET.SubElement(xmlSection, 'Date').text = prjScn.date
@@ -2458,9 +2435,11 @@ class NovxFile(File):
         if prjScn.characters:
             attrib = {'ids':' '.join(prjScn.characters)}
             ET.SubElement(xmlSection, 'Characters', attrib=attrib)
+
         if prjScn.locations:
             attrib = {'ids':' '.join(prjScn.locations)}
             ET.SubElement(xmlSection, 'Locations', attrib=attrib)
+
         if prjScn.items:
             attrib = {'ids':' '.join(prjScn.items)}
             ET.SubElement(xmlSection, 'Items', attrib=attrib)
@@ -2470,13 +2449,29 @@ class NovxFile(File):
             if not sectionContent in ('<p></p>', '<p />'):
                 xmlSection.append(ET.fromstring(f'<Content>{sectionContent}</Content>'))
 
+    def _get_aka(self, xmlElement, prjElement):
+        prjElement.aka = get_element_text(xmlElement, 'Aka')
+
+    def _get_base_data(self, xmlElement, prjElement):
+        prjElement.title = get_element_text(xmlElement, 'Title')
+        prjElement.desc = xml_element_to_text(xmlElement.find('Desc'))
+        prjElement.links = self._get_link_dict(xmlElement)
+
     def _get_link_dict(self, parent):
         links = {}
         for xmlLink in parent.iterfind('Link'):
             path = xmlLink.attrib.get('path', None)
+            fullPath = xmlLink.attrib.get('fullPath', None)
             if path:
-                links[path] = None
+                links[path] = fullPath
         return links
+
+    def _get_notes(self, xmlElement, prjElement):
+        prjElement.notes = xml_element_to_text(xmlElement.find('Notes'))
+
+    def _get_tags(self, xmlElement, prjElement):
+        tags = string_to_list(get_element_text(xmlElement, 'Tags'))
+        prjElement.tags = self._strip_spaces(tags)
 
     def _postprocess_xml_file(self, filePath):
         with open(filePath, 'r', encoding='utf-8') as f:
@@ -2487,46 +2482,10 @@ class NovxFile(File):
         except:
             raise Error(f'{_("Cannot write file")}: "{norm_path(filePath)}".')
 
-    def _read_plot_lines(self, root):
-        try:
-            for xmlPlotLine in root.find('ARCS'):
-                plId = xmlPlotLine.attrib['id']
-                self.novel.plotLines[plId] = PlotLine(on_element_change=self.on_element_change)
-                self.novel.plotLines[plId].title = get_element_text(xmlPlotLine, 'Title')
-                self.novel.plotLines[plId].desc = xml_element_to_text(xmlPlotLine.find('Desc'))
-                self.novel.plotLines[plId].shortName = get_element_text(xmlPlotLine, 'ShortName')
-                self.novel.tree.append(PL_ROOT, plId)
-                for xmlPlotPoint in xmlPlotLine.iterfind('POINT'):
-                    ppId = xmlPlotPoint.attrib['id']
-                    self._read_plot_point(xmlPlotPoint, ppId, plId)
-                    self.novel.tree.append(plId, ppId)
-
-                acSections = []
-                xmlSections = xmlPlotLine.find('Sections')
-                if xmlSections is not None:
-                    scIds = xmlSections.get('ids', None)
-                    for scId in string_to_list(scIds, divider=' '):
-                        if scId and scId in self.novel.sections:
-                            acSections.append(scId)
-                            self.novel.sections[scId].scPlotLines.append(plId)
-                self.novel.plotLines[plId].sections = acSections
-        except TypeError:
-            pass
-
-    def _read_plot_point(self, xmlPoint, ppId, plId):
-        self.novel.plotPoints[ppId] = PlotPoint(on_element_change=self.on_element_change)
-        self.novel.plotPoints[ppId].title = get_element_text(xmlPoint, 'Title')
-        self.novel.plotPoints[ppId].desc = xml_element_to_text(xmlPoint.find('Desc'))
-        self.novel.plotPoints[ppId].notes = xml_element_to_text(xmlPoint.find('Notes'))
-        xmlSectionAssoc = xmlPoint.find('Section')
-        if xmlSectionAssoc is not None:
-            scId = xmlSectionAssoc.get('id', None)
-            self.novel.plotPoints[ppId].sectionAssoc = scId
-            self.novel.sections[scId].scPlotPoints[ppId] = plId
-
-    def _read_chapters(self, root, partType=0):
+    def _read_chapters(self, root):
         try:
             for xmlChapter in root.find('CHAPTERS'):
+
                 chId = xmlChapter.attrib['id']
                 self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
                 typeStr = xmlChapter.get('type', '0')
@@ -2541,8 +2500,10 @@ class NovxFile(File):
                     self.novel.chapters[chId].chLevel = 2
                 self.novel.chapters[chId].isTrash = xmlChapter.get('isTrash', None) == '1'
                 self.novel.chapters[chId].noNumber = xmlChapter.get('noNumber', None) == '1'
-                self.novel.chapters[chId].title = get_element_text(xmlChapter, 'Title')
-                self.novel.chapters[chId].desc = xml_element_to_text(xmlChapter.find('Desc'))
+
+                self._get_base_data(xmlChapter, self.novel.chapters[chId])
+                self._get_notes(xmlChapter, self.novel.chapters[chId])
+
                 self.novel.tree.append(CH_ROOT, chId)
                 if xmlChapter.find('SECTION'):
                     for xmlSection in xmlChapter.iterfind('SECTION'):
@@ -2557,21 +2518,26 @@ class NovxFile(File):
     def _read_characters(self, root):
         try:
             for xmlCharacter in root.find('CHARACTERS'):
+
                 crId = xmlCharacter.attrib['id']
                 self.novel.characters[crId] = Character(on_element_change=self.on_element_change)
                 self.novel.characters[crId].isMajor = xmlCharacter.get('major', None) == '1'
-                self.novel.characters[crId].title = get_element_text(xmlCharacter, 'Title')
-                self.novel.characters[crId].links = self._get_link_dict(xmlCharacter)
-                self.novel.characters[crId].desc = xml_element_to_text(xmlCharacter.find('Desc'))
-                self.novel.characters[crId].aka = get_element_text(xmlCharacter, 'Aka')
-                tags = string_to_list(get_element_text(xmlCharacter, 'Tags'))
-                self.novel.characters[crId].tags = self._strip_spaces(tags)
-                self.novel.characters[crId].notes = xml_element_to_text(xmlCharacter.find('Notes'))
-                self.novel.characters[crId].bio = xml_element_to_text(xmlCharacter.find('Bio'))
-                self.novel.characters[crId].goals = xml_element_to_text(xmlCharacter.find('Goals'))
+
+                self._get_base_data(xmlCharacter, self.novel.characters[crId])
+                self._get_notes(xmlCharacter, self.novel.characters[crId])
+                self._get_tags(xmlCharacter, self.novel.characters[crId])
+                self._get_aka(xmlCharacter, self.novel.characters[crId])
+
                 self.novel.characters[crId].fullName = get_element_text(xmlCharacter, 'FullName')
+
+                self.novel.characters[crId].bio = xml_element_to_text(xmlCharacter.find('Bio'))
+
+                self.novel.characters[crId].goals = xml_element_to_text(xmlCharacter.find('Goals'))
+
                 self.novel.characters[crId].birthDate = get_element_text(xmlCharacter, 'BirthDate')
+
                 self.novel.characters[crId].deathDate = get_element_text(xmlCharacter, 'DeathDate')
+
                 self.novel.tree.append(CR_ROOT, crId)
         except TypeError:
             pass
@@ -2579,14 +2545,15 @@ class NovxFile(File):
     def _read_items(self, root):
         try:
             for xmlItem in root.find('ITEMS'):
+
                 itId = xmlItem.attrib['id']
                 self.novel.items[itId] = WorldElement(on_element_change=self.on_element_change)
-                self.novel.items[itId].title = get_element_text(xmlItem, 'Title')
-                self.novel.items[itId].desc = xml_element_to_text(xmlItem.find('Desc'))
-                self.novel.items[itId].aka = get_element_text(xmlItem, 'Aka')
-                tags = string_to_list(get_element_text(xmlItem, 'Tags'))
-                self.novel.items[itId].tags = self._strip_spaces(tags)
-                self.novel.items[itId].links = self._get_link_dict(xmlItem)
+
+                self._get_base_data(xmlItem, self.novel.items[itId])
+                self._get_notes(xmlItem, self.novel.items[itId])
+                self._get_tags(xmlItem, self.novel.items[itId])
+                self._get_aka(xmlItem, self.novel.items[itId])
+
                 self.novel.tree.append(IT_ROOT, itId)
         except TypeError:
             pass
@@ -2594,20 +2561,64 @@ class NovxFile(File):
     def _read_locations(self, root):
         try:
             for xmlLocation in root.find('LOCATIONS'):
+
                 lcId = xmlLocation.attrib['id']
                 self.novel.locations[lcId] = WorldElement(on_element_change=self.on_element_change)
-                self.novel.locations[lcId].title = get_element_text(xmlLocation, 'Title')
-                self.novel.locations[lcId].links = self._get_link_dict(xmlLocation)
-                self.novel.locations[lcId].desc = xml_element_to_text(xmlLocation.find('Desc'))
-                self.novel.locations[lcId].aka = get_element_text(xmlLocation, 'Aka')
-                tags = string_to_list(get_element_text(xmlLocation, 'Tags'))
-                self.novel.locations[lcId].tags = self._strip_spaces(tags)
+
+                self._get_base_data(xmlLocation, self.novel.locations[lcId])
+                self._get_notes(xmlLocation, self.novel.locations[lcId])
+                self._get_tags(xmlLocation, self.novel.locations[lcId])
+                self._get_aka(xmlLocation, self.novel.locations[lcId])
+
                 self.novel.tree.append(LC_ROOT, lcId)
         except TypeError:
             pass
 
+    def _read_plot_lines(self, root):
+        try:
+            for xmlPlotLine in root.find('ARCS'):
+
+                plId = xmlPlotLine.attrib['id']
+                self.novel.plotLines[plId] = PlotLine(on_element_change=self.on_element_change)
+
+                self._get_base_data(xmlPlotLine, self.novel.plotLines[plId])
+                self._get_notes(xmlPlotLine, self.novel.plotLines[plId])
+
+                self.novel.plotLines[plId].shortName = get_element_text(xmlPlotLine, 'ShortName')
+
+                acSections = []
+                xmlSections = xmlPlotLine.find('Sections')
+                if xmlSections is not None:
+                    scIds = xmlSections.get('ids', None)
+                    for scId in string_to_list(scIds, divider=' '):
+                        if scId and scId in self.novel.sections:
+                            acSections.append(scId)
+                            self.novel.sections[scId].scPlotLines.append(plId)
+                self.novel.plotLines[plId].sections = acSections
+
+                self.novel.tree.append(PL_ROOT, plId)
+                for xmlPlotPoint in xmlPlotLine.iterfind('POINT'):
+                    ppId = xmlPlotPoint.attrib['id']
+                    self._read_plot_point(xmlPlotPoint, ppId, plId)
+                    self.novel.tree.append(plId, ppId)
+
+        except TypeError:
+            pass
+
+    def _read_plot_point(self, xmlPoint, ppId, plId):
+        self.novel.plotPoints[ppId] = PlotPoint(on_element_change=self.on_element_change)
+
+        self._get_base_data(xmlPoint, self.novel.plotPoints[ppId])
+
+        xmlSectionAssoc = xmlPoint.find('Section')
+        if xmlSectionAssoc is not None:
+            scId = xmlSectionAssoc.get('id', None)
+            self.novel.plotPoints[ppId].sectionAssoc = scId
+            self.novel.sections[scId].scPlotPoints[ppId] = plId
+
     def _read_project(self, root):
         xmlProject = root.find('PROJECT')
+
         self.novel.renumberChapters = xmlProject.get('renumberChapters', None) == '1'
         self.novel.renumberParts = xmlProject.get('renumberParts', None) == '1'
         self.novel.renumberWithinParts = xmlProject.get('renumberWithinParts', None) == '1'
@@ -2619,22 +2630,29 @@ class NovxFile(File):
             self.novel.workPhase = int(workPhase)
         else:
             self.novel.workPhase = None
-        self.novel.title = get_element_text(xmlProject, 'Title')
+
+        self._get_base_data(xmlProject, self.novel)
+
         self.novel.authorName = get_element_text(xmlProject, 'Author')
-        self.novel.desc = xml_element_to_text(xmlProject.find('Desc'))
+
         self.novel.chapterHeadingPrefix = get_element_text(xmlProject, 'ChapterHeadingPrefix')
         self.novel.chapterHeadingSuffix = get_element_text(xmlProject, 'ChapterHeadingSuffix')
+
         self.novel.partHeadingPrefix = get_element_text(xmlProject, 'PartHeadingPrefix')
         self.novel.partHeadingSuffix = get_element_text(xmlProject, 'PartHeadingSuffix')
+
         self.novel.customGoal = get_element_text(xmlProject, 'CustomGoal')
         self.novel.customConflict = get_element_text(xmlProject, 'CustomConflict')
         self.novel.customOutcome = get_element_text(xmlProject, 'CustomOutcome')
+
         self.novel.customChrBio = get_element_text(xmlProject, 'CustomChrBio')
         self.novel.customChrGoals = get_element_text(xmlProject, 'CustomChrGoals')
+
         if xmlProject.find('WordCountStart') is not None:
             self.novel.wordCountStart = int(xmlProject.find('WordCountStart').text)
         if xmlProject.find('WordTarget') is not None:
             self.novel.wordTarget = int(xmlProject.find('WordTarget').text)
+
         self.novel.referenceDate = get_element_text(xmlProject, 'ReferenceDate')
 
     def _read_project_notes(self, root):
@@ -2642,14 +2660,16 @@ class NovxFile(File):
             for xmlProjectNote in root.find('PROJECTNOTES'):
                 pnId = xmlProjectNote.attrib['id']
                 self.novel.projectNotes[pnId] = BasicElement()
-                self.novel.projectNotes[pnId].title = get_element_text(xmlProjectNote, 'Title')
-                self.novel.projectNotes[pnId].desc = xml_element_to_text(xmlProjectNote.find('Desc'))
+
+                self._get_base_data(xmlProjectNote, self.novel.projectNotes[pnId])
+
                 self.novel.tree.append(PN_ROOT, pnId)
         except TypeError:
             pass
 
     def _read_section(self, xmlSection, scId):
         self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
+
         typeStr = xmlSection.get('type', '0')
         if typeStr in ('0', '1', '2', '3'):
             self.novel.sections[scId].scType = int(typeStr)
@@ -2666,32 +2686,22 @@ class NovxFile(File):
         else:
             self.novel.sections[scId].scPacing = 0
         self.novel.sections[scId].appendToPrev = xmlSection.get('append', None) == '1'
-        self.novel.sections[scId].title = get_element_text(xmlSection, 'Title')
-        self.novel.sections[scId].desc = xml_element_to_text(xmlSection.find('Desc'))
 
-        if xmlSection.find('Content'):
-            xmlStr = ET.tostring(xmlSection.find('Content'),
-                                 encoding='utf-8',
-                                 short_empty_elements=False
-                                 ).decode('utf-8')
-            xmlStr = xmlStr.replace('<Content>', '').replace('</Content>', '')
+        self._get_base_data(xmlSection, self.novel.sections[scId])
+        self._get_notes(xmlSection, self.novel.sections[scId])
+        self._get_tags(xmlSection, self.novel.sections[scId])
 
-            lines = xmlStr.split('\n')
-            newlines = []
-            for line in lines:
-                newlines.append(line.strip())
-            xmlStr = ''.join(newlines)
-            if xmlStr:
-                self.novel.sections[scId].sectionContent = xmlStr
-            else:
-                self.novel.sections[scId].sectionContent = '<p></p>'
-        else:
-            self.novel.sections[scId].sectionContent = '<p></p>'
+        self.novel.sections[scId].goal = xml_element_to_text(xmlSection.find('Goal'))
+        self.novel.sections[scId].conflict = xml_element_to_text(xmlSection.find('Conflict'))
+        self.novel.sections[scId].outcome = xml_element_to_text(xmlSection.find('Outcome'))
 
-        self.novel.sections[scId].notes = xml_element_to_text(xmlSection.find('Notes'))
-
-        tags = string_to_list(get_element_text(xmlSection, 'Tags'))
-        self.novel.sections[scId].tags = self._strip_spaces(tags)
+        xmlPlotNotes = xmlSection.find('PlotNotes')
+        if xmlPlotNotes is not None:
+            plotNotes = {}
+            for xmlPlotLineNote in xmlPlotNotes.iterfind('PlotlineNotes'):
+                plId = xmlPlotLineNote.get('id', None)
+                plotNotes[plId] = xml_element_to_text(xmlPlotLineNote)
+            self.novel.sections[scId].plotNotes = plotNotes
 
         if xmlSection.find('Date') is not None:
             dateStr = xmlSection.find('Date').text
@@ -2723,18 +2733,6 @@ class NovxFile(File):
         self.novel.sections[scId].lastsHours = get_element_text(xmlSection, 'LastsHours')
         self.novel.sections[scId].lastsMinutes = get_element_text(xmlSection, 'LastsMinutes')
 
-        self.novel.sections[scId].goal = xml_element_to_text(xmlSection.find('Goal'))
-        self.novel.sections[scId].conflict = xml_element_to_text(xmlSection.find('Conflict'))
-        self.novel.sections[scId].outcome = xml_element_to_text(xmlSection.find('Outcome'))
-
-        xmlPlotNotes = xmlSection.find('PlotNotes')
-        if xmlPlotNotes is not None:
-            plotNotes = {}
-            for xmlPlotLineNote in xmlPlotNotes.iterfind('PlotlineNotes'):
-                plId = xmlPlotLineNote.get('id', None)
-                plotNotes[plId] = xml_element_to_text(xmlPlotLineNote)
-            self.novel.sections[scId].plotNotes = plotNotes
-
         scCharacters = []
         xmlCharacters = xmlSection.find('Characters')
         if xmlCharacters is not None:
@@ -2761,6 +2759,50 @@ class NovxFile(File):
                 if itId and itId in self.novel.items:
                     scItems.append(itId)
         self.novel.sections[scId].items = scItems
+
+        if xmlSection.find('Content'):
+            xmlStr = ET.tostring(xmlSection.find('Content'),
+                                 encoding='utf-8',
+                                 short_empty_elements=False
+                                 ).decode('utf-8')
+            xmlStr = xmlStr.replace('<Content>', '').replace('</Content>', '')
+
+            lines = xmlStr.split('\n')
+            newlines = []
+            for line in lines:
+                newlines.append(line.strip())
+            xmlStr = ''.join(newlines)
+            if xmlStr:
+                self.novel.sections[scId].sectionContent = xmlStr
+            else:
+                self.novel.sections[scId].sectionContent = '<p></p>'
+        else:
+            self.novel.sections[scId].sectionContent = '<p></p>'
+
+    def _set_aka(self, xmlElement, prjElement):
+        if prjElement.aka:
+            ET.SubElement(xmlElement, 'Aka').text = prjElement.aka
+
+    def _set_base_data(self, xmlElement, prjElement):
+        if prjElement.title:
+            ET.SubElement(xmlElement, 'Title').text = prjElement.title
+        if prjElement.desc:
+            xmlElement.append(text_to_xml_element('Desc', prjElement.desc))
+        if prjElement.links:
+            for path in prjElement.links:
+                xmlLink = ET.SubElement(xmlElement, 'Link')
+                xmlLink.set('path', path)
+                if prjElement.links[path]:
+                    xmlLink.set('fullPath', prjElement.links[path])
+
+    def _set_notes(self, xmlElement, prjElement):
+        if prjElement.notes:
+            xmlElement.append(text_to_xml_element('Notes', prjElement.notes))
+
+    def _set_tags(self, xmlElement, prjElement):
+        tagStr = list_to_string(prjElement.tags)
+        if tagStr:
+            ET.SubElement(xmlElement, 'Tags').text = tagStr
 
     def _strip_spaces(self, lines):
         stripped = []
