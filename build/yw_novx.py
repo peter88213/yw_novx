@@ -43,6 +43,7 @@ CHARACTER_REPORT_SUFFIX = '_character_report'
 CHARACTERS_SUFFIX = '_characters_tmp'
 CHARLIST_SUFFIX = '_charlist_tmp'
 DATA_SUFFIX = '_data'
+GRID_SUFFIX = '_grid_tmp'
 ITEM_REPORT_SUFFIX = '_item_report'
 ITEMLIST_SUFFIX = '_itemlist_tmp'
 ITEMS_SUFFIX = '_items_tmp'
@@ -52,12 +53,12 @@ LOCLIST_SUFFIX = '_loclist_tmp'
 MANUSCRIPT_SUFFIX = '_manuscript_tmp'
 PARTS_SUFFIX = '_parts_tmp'
 PLOTLIST_SUFFIX = '_plotlist'
-PLOT_SUFFIX = '_plot'
+PLOTLINES_SUFFIX = '_plotlines_tmp'
 PROJECTNOTES_SUFFIX = '_projectnote_report'
 PROOF_SUFFIX = '_proof_tmp'
 SECTIONLIST_SUFFIX = '_sectionlist'
-GRID_SUFFIX = '_grid_tmp'
 SECTIONS_SUFFIX = '_sections_tmp'
+STAGES_SUFFIX = '_structure_tmp'
 XREF_SUFFIX = '_xref'
 
 
@@ -2191,7 +2192,6 @@ class NovxFile(File):
                 }
         xmlRoot = ET.Element('novx', attrib=attrib)
         self._build_element_tree(xmlRoot)
-        indent(xmlRoot)
         self.xmlTree = ET.ElementTree(xmlRoot)
         self._write_element_tree(self)
         self._postprocess_xml_file(self.filePath)
