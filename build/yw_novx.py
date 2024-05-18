@@ -708,7 +708,7 @@ class Section(BasicElementTags):
         self._goal = goal
         self._conflict = conflict
         self._outcome = outcome
-        self._plotNotes = plotNotes
+        self._plotlineNotes = plotNotes
         try:
             newDate = date.fromisoformat(scDate)
             self._weekDay = newDate.weekday()
@@ -818,16 +818,16 @@ class Section(BasicElementTags):
             self.on_element_change()
 
     @property
-    def plotNotes(self):
+    def plotlineNotes(self):
         try:
-            return dict(self._plotNotes)
+            return dict(self._plotlineNotes)
         except TypeError:
             return None
 
-    @plotNotes.setter
-    def plotNotes(self, newVal):
-        if self._plotNotes != newVal:
-            self._plotNotes = newVal
+    @plotlineNotes.setter
+    def plotlineNotes(self, newVal):
+        if self._plotlineNotes != newVal:
+            self._plotlineNotes = newVal
             self.on_element_change()
 
     @property
@@ -1004,12 +1004,13 @@ class Section(BasicElementTags):
         self.outcome = self._xml_element_to_text(xmlElement.find('Outcome'))
 
         xmlPlotNotes = xmlElement.find('PlotNotes')
-        if xmlPlotNotes is not None:
-            plotNotes = {}
-            for xmlPlotLineNote in xmlPlotNotes.iterfind('PlotlineNotes'):
-                plId = xmlPlotLineNote.get('id', None)
-                plotNotes[plId] = self._xml_element_to_text(xmlPlotLineNote)
-            self.plotNotes = plotNotes
+        if xmlPlotNotes is None:
+            xmlPlotNotes = xmlElement
+        plotNotes = {}
+        for xmlPlotLineNote in xmlPlotNotes.iterfind('PlotlineNotes'):
+            plId = xmlPlotLineNote.get('id', None)
+            plotNotes[plId] = self._xml_element_to_text(xmlPlotLineNote)
+        self.plotlineNotes = plotNotes
 
         if xmlElement.find('Date') is not None:
             dateStr = xmlElement.find('Date').text
@@ -1152,18 +1153,17 @@ class Section(BasicElementTags):
         if self.outcome:
             xmlElement.append(self._text_to_xml_element('Outcome', self.outcome))
 
-        if self.plotNotes:
-            xmlPlotNotes = ET.SubElement(xmlElement, 'PlotNotes')
-            for plId in self.plotNotes:
+        if self.plotlineNotes:
+            for plId in self.plotlineNotes:
                 if not plId in self.scPlotLines:
                     continue
 
-                if not self.plotNotes[plId]:
+                if not self.plotlineNotes[plId]:
                     continue
 
-                xmlPlotNote = self._text_to_xml_element('PlotlineNotes', self.plotNotes[plId])
-                xmlPlotNote.set('id', plId)
-                xmlPlotNotes.append(xmlPlotNote)
+                xmlPlotlineNotes = self._text_to_xml_element('PlotlineNotes', self.plotlineNotes[plId])
+                xmlPlotlineNotes.set('id', plId)
+                xmlElement.append(xmlPlotlineNotes)
 
         if self.date:
             ET.SubElement(xmlElement, 'Date').text = self.date
