@@ -2893,6 +2893,12 @@ class Section(BasicElementTags):
             self.scene = int(scene)
         else:
             self.scene = 0
+
+        if not self.scene:
+            scPacing = xmlElement.get('pacing', None)
+            if scPacing in ('1', '2'):
+                self.scene = int(scPacing) + 1
+
         self.appendToPrev = xmlElement.get('append', None) == '1'
 
         self.goal = self._xml_element_to_text(xmlElement.find('Goal'))
@@ -2984,13 +2990,6 @@ class Section(BasicElementTags):
                 self.sectionContent = '<p></p>'
         else:
             self.sectionContent = '<p></p>'
-
-        if not self.scene:
-            scPacing = xmlElement.get('pacing', 0)
-            if scPacing in ('1', '2'):
-                self.scene = int(scPacing) + 1
-            elif self.goal or self.conflict or self.outcome:
-                self.scene = 1
 
     def get_end_date_time(self):
         endDate = None
