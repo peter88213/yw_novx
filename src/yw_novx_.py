@@ -11,9 +11,7 @@ import sys
 import os
 
 from nvywlib.yw7_file import Yw7File
-from novxlib.novx.novx_file import NovxFile
-from novxlib.model.novel import Novel
-from novxlib.model.nv_tree import NvTree
+from nvlib.model.nv_service import NvService
 
 
 def yw_novx(sourcePath):
@@ -21,10 +19,11 @@ def yw_novx(sourcePath):
     if extension != '.yw7':
         raise ValueError(f'File must be .yw7 type, but is "{extension}".')
 
+    nvService = NvService()
     targetPath = f'{path}.novx'
-    source = Yw7File(sourcePath)
-    target = NovxFile(targetPath)
-    source.novel = Novel(tree=NvTree())
+    source = Yw7File(sourcePath, nv_service=nvService)
+    target = nvService.make_novx_file(targetPath)
+    source.novel = nvService.make_novel()
     source.read()
     target.novel = source.novel
     target.wcLog = source.wcLog

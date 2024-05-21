@@ -12,6 +12,7 @@ License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 import sys
 sys.path.append('../../novxlib/src')
 sys.path.append('../../nv_yw7/src')
+sys.path.append('../../novelibre/src')
 import inliner
 
 SRC = '../src/'
@@ -22,6 +23,7 @@ TARGET_FILE = f'{BUILD}yw_novx.py'
 
 def main():
     inliner.run(SOURCE_FILE, TARGET_FILE, 'nvywlib', '../../nv_yw7/src/')
+    inliner.run(TARGET_FILE, TARGET_FILE, 'nvlib', '../../novelibre/src/')
     inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
     print('Done.')
 

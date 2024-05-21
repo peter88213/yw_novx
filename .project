@@ -3,6 +3,7 @@
 	<name>yw_novx</name>
 	<comment></comment>
 	<projects>
+		<project>novelibre</project>
 		<project>noveltree_collection</project>
 		<project>novxlib</project>
 		<project>nv_yw7</project>
