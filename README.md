@@ -1,6 +1,6 @@
-# Convert *novelyst* projects and collections for *noveltree* 
+# Convert *novelyst* projects and collections for *novelibre* 
 
-The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration from [novelyst](https://peter88213.github.io/novelyst/) to [noveltree](https://github.com/peter88213/noveltree).
+The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration from [novelyst](https://peter88213.github.io/novelyst/) to [novelibre](https://github.com/peter88213/novelibre).
 
 ## Requirements
 
@@ -49,7 +49,7 @@ usage: `upgrade_collection.py Sourcefile`
 
 ## License
 
-This is Open Source software, and the *noveltree_collection* plugin is licenced under GPLv3. See the
+This is Open Source software, and the *novelibre_collection* plugin is licenced under GPLv3. See the
 [GNU General Public License website](https://www.gnu.org/licenses/gpl-3.0.en.html) for more
 details, or consult the [LICENSE](https://github.com/peter88213/nv_collection/blob/main/LICENSE) file.
 
