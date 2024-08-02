@@ -9,23 +9,33 @@ must be located on the same directory level as the yw_novx project.
 For further information see https://github.com/peter88213/yw_novx
 License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
+import os
 import sys
-sys.path.append('../../novxlib/src')
-sys.path.append('../../nv_yw7/src')
-sys.path.append('../../novelibre/src')
+
 import inliner
 
-SRC = '../src/'
-BUILD = '../build/'
-SOURCE_FILE = f'{SRC}yw_novx_.py'
-TARGET_FILE = f'{BUILD}yw_novx.py'
+sys.path.insert(0, f'{os.getcwd()}/../../novxlib/src')
+
+SOURCE_DIR = '../src/'
+TEST_DIR = '../build/'
+SOURCE_FILE = f'{SOURCE_DIR}yw_novx_.py'
+TEST_FILE = f'{TEST_DIR}yw_novx.py'
+NVLIB = 'nvlib'
+NV_PATH = '../../novelibre/src/'
+NOVXLIB = 'novxlib'
+NOVX_PATH = '../../novxlib/src/'
+
+
+def inline_modules():
+    inliner.run(SOURCE_FILE, TEST_FILE, 'nvywlib', '../../nv_yw7/src/')
+    inliner.run(TEST_FILE, TEST_FILE, NVLIB, NV_PATH)
+    inliner.run(TEST_FILE, TEST_FILE, NOVXLIB, NOVX_PATH)
+    print('Done.')
 
 
 def main():
-    inliner.run(SOURCE_FILE, TARGET_FILE, 'nvywlib', '../../nv_yw7/src/')
-    inliner.run(TARGET_FILE, TARGET_FILE, 'nvlib', '../../novelibre/src/')
-    inliner.run(TARGET_FILE, TARGET_FILE, 'novxlib', '../../novxlib/src/')
-    print('Done.')
+    os.makedirs(TEST_DIR, exist_ok=True)
+    inline_modules()
 
 
 if __name__ == '__main__':
