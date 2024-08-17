@@ -69,19 +69,22 @@ class Error(Exception):
     pass
 
 
-locale.setlocale(locale.LC_TIME, "")
-LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
 try:
-    CURRENT_LANGUAGE = locale.getlocale()[0][:2]
-except:
-    CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
-try:
-    t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
-    _ = t.gettext
-except:
+    LOCALE_PATH
+except NameError:
+    locale.setlocale(locale.LC_TIME, "")
+    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
+    try:
+        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
+    except:
+        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
+    try:
+        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+        _ = t.gettext
+    except:
 
-    def _(message):
-        return message
+        def _(message):
+            return message
 
 WEEKDAYS = day_name
 MONTHS = month_name
@@ -160,6 +163,7 @@ class File(ABC):
 
     @filePath.setter
     def filePath(self, filePath: str):
+        filePath = filePath.replace('\\', '/')
         if self.SUFFIX is not None:
             suffix = self.SUFFIX
         else:
@@ -297,7 +301,7 @@ def indent(elem, level=0):
     PARAGRAPH_LEVEL = 5
 
     i = f'\n{level * "  "}'
-    if elem:
+    if len(elem):
         if not elem.text or not elem.text.strip():
             elem.text = f'{i}  '
         if not elem.tail or not elem.tail.strip():
@@ -310,6 +314,20 @@ def indent(elem, level=0):
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
+
+LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
+try:
+    CURRENT_LANGUAGE = locale.getlocale()[0][:2]
+except:
+    CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
+try:
+    t = gettext.translation('nv_yw7', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+    _ = t.gettext
+except:
+
+    def _(message):
+        return message
+
 import xml.etree.ElementTree as ET
 
 
@@ -895,9 +913,9 @@ class Yw7File(File):
             text = ''
         else:
             text = text.replace('<RTFBRK>', '')
-            text = re.sub('\[\/*[h|c|r|s|u]\d*\]', '', text)
+            text = re.sub(r'\[\/*[h|c|r|s|u]\d*\]', '', text)
             for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
-                text = re.sub(f'\<{specialCode} .+?\/{specialCode}\>', '', text)
+                text = re.sub(fr'\<{specialCode} .+?\/{specialCode}\>', '', text)
 
             xmlReplacements = [
                 ('&', '&amp;'),
@@ -949,11 +967,11 @@ class Yw7File(File):
                 text = text.replace(nv, od)
 
             if text.find('/*') > 0:
-                text = re.sub('\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
-                text = re.sub('\/\*(.*?)\*\/', replace_comment, text)
+                text = re.sub(r'\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
+                text = re.sub(r'\/\*(.*?)\*\/', replace_comment, text)
 
             text = f'<p>{text}</p>'
-            text = re.sub('\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
+            text = re.sub(r'\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
         return text
 
     def _postprocess_xml_file(self, filePath):
@@ -963,8 +981,8 @@ class Yw7File(File):
         newlines = ['<?xml version="1.0" encoding="utf-8"?>']
         for line in lines:
             for tag in self._CDATA_TAGS:
-                line = re.sub(f'\<{tag}\>', f'<{tag}><![CDATA[', line)
-                line = re.sub(f'\<\/{tag}\>', f']]></{tag}>', line)
+                line = re.sub(fr'\<{tag}\>', f'<{tag}><![CDATA[', line)
+                line = re.sub(fr'\<\/{tag}\>', f']]></{tag}>', line)
             newlines.append(line)
         text = '\n'.join(newlines)
         text = text.replace('[CDATA[ \n', '[CDATA[')
@@ -1573,6 +1591,8 @@ class BasicElement:
 
     @title.setter
     def title(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._title != newVal:
             self._title = newVal
             self.on_element_change()
@@ -1583,6 +1603,8 @@ class BasicElement:
 
     @desc.setter
     def desc(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._desc != newVal:
             self._desc = newVal
             self.on_element_change()
@@ -1596,6 +1618,11 @@ class BasicElement:
 
     @links.setter
     def links(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                val = newVal[elem]
+                if val is not None:
+                    assert type(val) == str
         if self._links != newVal:
             self._links = newVal
             self.on_element_change()
@@ -1653,13 +1680,13 @@ class BasicElement:
 
     def _xml_element_to_text(self, xmlElement):
         lines = []
-        if xmlElement:
+        if xmlElement is not None:
             for paragraph in xmlElement.iterfind('p'):
                 lines.append(''.join(t for t in paragraph.itertext()))
         return '\n'.join(lines)
 
 
-LANGUAGE_TAG = re.compile('\<span xml\:lang=\"(.*?)\"\>')
+LANGUAGE_TAG = re.compile(r'\<span xml\:lang=\"(.*?)\"\>')
 
 
 class Novel(BasicElement):
@@ -1741,6 +1768,8 @@ class Novel(BasicElement):
 
     @authorName.setter
     def authorName(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._authorName != newVal:
             self._authorName = newVal
             self.on_element_change()
@@ -1751,6 +1780,8 @@ class Novel(BasicElement):
 
     @wordTarget.setter
     def wordTarget(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._wordTarget != newVal:
             self._wordTarget = newVal
             self.on_element_change()
@@ -1761,6 +1792,8 @@ class Novel(BasicElement):
 
     @wordCountStart.setter
     def wordCountStart(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._wordCountStart != newVal:
             self._wordCountStart = newVal
             self.on_element_change()
@@ -1771,6 +1804,8 @@ class Novel(BasicElement):
 
     @languageCode.setter
     def languageCode(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._languageCode != newVal:
             self._languageCode = newVal
             self.on_element_change()
@@ -1781,6 +1816,8 @@ class Novel(BasicElement):
 
     @countryCode.setter
     def countryCode(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._countryCode != newVal:
             self._countryCode = newVal
             self.on_element_change()
@@ -1791,6 +1828,8 @@ class Novel(BasicElement):
 
     @renumberChapters.setter
     def renumberChapters(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._renumberChapters != newVal:
             self._renumberChapters = newVal
             self.on_element_change()
@@ -1801,6 +1840,8 @@ class Novel(BasicElement):
 
     @renumberParts.setter
     def renumberParts(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._renumberParts != newVal:
             self._renumberParts = newVal
             self.on_element_change()
@@ -1811,6 +1852,8 @@ class Novel(BasicElement):
 
     @renumberWithinParts.setter
     def renumberWithinParts(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._renumberWithinParts != newVal:
             self._renumberWithinParts = newVal
             self.on_element_change()
@@ -1821,6 +1864,8 @@ class Novel(BasicElement):
 
     @romanChapterNumbers.setter
     def romanChapterNumbers(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._romanChapterNumbers != newVal:
             self._romanChapterNumbers = newVal
             self.on_element_change()
@@ -1831,6 +1876,8 @@ class Novel(BasicElement):
 
     @romanPartNumbers.setter
     def romanPartNumbers(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._romanPartNumbers != newVal:
             self._romanPartNumbers = newVal
             self.on_element_change()
@@ -1841,6 +1888,8 @@ class Novel(BasicElement):
 
     @saveWordCount.setter
     def saveWordCount(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._saveWordCount != newVal:
             self._saveWordCount = newVal
             self.on_element_change()
@@ -1851,6 +1900,8 @@ class Novel(BasicElement):
 
     @workPhase.setter
     def workPhase(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._workPhase != newVal:
             self._workPhase = newVal
             self.on_element_change()
@@ -1861,6 +1912,8 @@ class Novel(BasicElement):
 
     @chapterHeadingPrefix.setter
     def chapterHeadingPrefix(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._chapterHeadingPrefix != newVal:
             self._chapterHeadingPrefix = newVal
             self.on_element_change()
@@ -1871,6 +1924,8 @@ class Novel(BasicElement):
 
     @chapterHeadingSuffix.setter
     def chapterHeadingSuffix(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._chapterHeadingSuffix != newVal:
             self._chapterHeadingSuffix = newVal
             self.on_element_change()
@@ -1881,6 +1936,8 @@ class Novel(BasicElement):
 
     @partHeadingPrefix.setter
     def partHeadingPrefix(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._partHeadingPrefix != newVal:
             self._partHeadingPrefix = newVal
             self.on_element_change()
@@ -1891,6 +1948,8 @@ class Novel(BasicElement):
 
     @partHeadingSuffix.setter
     def partHeadingSuffix(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._partHeadingSuffix != newVal:
             self._partHeadingSuffix = newVal
             self.on_element_change()
@@ -1901,6 +1960,8 @@ class Novel(BasicElement):
 
     @customPlotProgress.setter
     def customPlotProgress(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customPlotProgress != newVal:
             self._customPlotProgress = newVal
             self.on_element_change()
@@ -1911,6 +1972,8 @@ class Novel(BasicElement):
 
     @customCharacterization.setter
     def customCharacterization(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customCharacterization != newVal:
             self._customCharacterization = newVal
             self.on_element_change()
@@ -1921,6 +1984,8 @@ class Novel(BasicElement):
 
     @customWorldBuilding.setter
     def customWorldBuilding(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customWorldBuilding != newVal:
             self._customWorldBuilding = newVal
             self.on_element_change()
@@ -1931,6 +1996,8 @@ class Novel(BasicElement):
 
     @customGoal.setter
     def customGoal(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customGoal != newVal:
             self._customGoal = newVal
             self.on_element_change()
@@ -1941,6 +2008,8 @@ class Novel(BasicElement):
 
     @customConflict.setter
     def customConflict(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customConflict != newVal:
             self._customConflict = newVal
             self.on_element_change()
@@ -1951,6 +2020,8 @@ class Novel(BasicElement):
 
     @customOutcome.setter
     def customOutcome(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customOutcome != newVal:
             self._customOutcome = newVal
             self.on_element_change()
@@ -1961,6 +2032,8 @@ class Novel(BasicElement):
 
     @customChrBio.setter
     def customChrBio(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customChrBio != newVal:
             self._customChrBio = newVal
             self.on_element_change()
@@ -1971,6 +2044,8 @@ class Novel(BasicElement):
 
     @customChrGoals.setter
     def customChrGoals(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._customChrGoals != newVal:
             self._customChrGoals = newVal
             self.on_element_change()
@@ -1981,10 +2056,13 @@ class Novel(BasicElement):
 
     @referenceDate.setter
     def referenceDate(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._referenceDate != newVal:
             if not newVal:
                 self._referenceDate = None
                 self.referenceWeekDay = None
+                self.on_element_change()
             else:
                 try:
                     self.referenceWeekDay = date.fromisoformat(newVal).weekday()
@@ -2162,6 +2240,8 @@ class BasicElementNotes(BasicElement):
 
     @notes.setter
     def notes(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._notes != newVal:
             self._notes = newVal
             self.on_element_change()
@@ -2197,6 +2277,8 @@ class Chapter(BasicElementNotes):
 
     @chLevel.setter
     def chLevel(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._chLevel != newVal:
             self._chLevel = newVal
             self.on_element_change()
@@ -2207,6 +2289,8 @@ class Chapter(BasicElementNotes):
 
     @chType.setter
     def chType(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._chType != newVal:
             self._chType = newVal
             self.on_element_change()
@@ -2217,6 +2301,8 @@ class Chapter(BasicElementNotes):
 
     @noNumber.setter
     def noNumber(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._noNumber != newVal:
             self._noNumber = newVal
             self.on_element_change()
@@ -2227,6 +2313,8 @@ class Chapter(BasicElementNotes):
 
     @isTrash.setter
     def isTrash(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._isTrash != newVal:
             self._isTrash = newVal
             self.on_element_change()
@@ -2272,6 +2360,10 @@ class BasicElementTags(BasicElementNotes):
 
     @tags.setter
     def tags(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
         if self._tags != newVal:
             self._tags = newVal
             self.on_element_change()
@@ -2306,6 +2398,8 @@ class WorldElement(BasicElementTags):
 
     @aka.setter
     def aka(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._aka != newVal:
             self._aka = newVal
             self.on_element_change()
@@ -2347,6 +2441,8 @@ class Character(WorldElement):
 
     @bio.setter
     def bio(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._bio != newVal:
             self._bio = newVal
             self.on_element_change()
@@ -2357,6 +2453,8 @@ class Character(WorldElement):
 
     @goals.setter
     def goals(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._goals != newVal:
             self._goals = newVal
             self.on_element_change()
@@ -2367,6 +2465,8 @@ class Character(WorldElement):
 
     @fullName.setter
     def fullName(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._fullName != newVal:
             self._fullName = newVal
             self.on_element_change()
@@ -2377,6 +2477,8 @@ class Character(WorldElement):
 
     @isMajor.setter
     def isMajor(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._isMajor != newVal:
             self._isMajor = newVal
             self.on_element_change()
@@ -2387,6 +2489,8 @@ class Character(WorldElement):
 
     @birthDate.setter
     def birthDate(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._birthDate != newVal:
             self._birthDate = newVal
             self.on_element_change()
@@ -2397,6 +2501,8 @@ class Character(WorldElement):
 
     @deathDate.setter
     def deathDate(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._deathDate != newVal:
             self._deathDate = newVal
             self.on_element_change()
@@ -2574,6 +2680,8 @@ class PlotLine(BasicElementNotes):
 
     @shortName.setter
     def shortName(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._shortName != newVal:
             self._shortName = newVal
             self.on_element_change()
@@ -2587,6 +2695,10 @@ class PlotLine(BasicElementNotes):
 
     @sections.setter
     def sections(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
         if self._sections != newVal:
             self._sections = newVal
             self.on_element_change()
@@ -2627,6 +2739,8 @@ class PlotPoint(BasicElementNotes):
 
     @sectionAssoc.setter
     def sectionAssoc(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._sectionAssoc != newVal:
             self._sectionAssoc = newVal
             self.on_element_change()
@@ -2683,9 +2797,9 @@ def get_unspecific_date(dateIso, refIso):
     return str((date.fromisoformat(dateIso) - refDate).days)
 
 
-ADDITIONAL_WORD_LIMITS = re.compile('--|—|–|\<\/p\>')
+ADDITIONAL_WORD_LIMITS = re.compile(r'--|—|–|\<\/p\>')
 
-NO_WORD_LIMITS = re.compile('\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>')
+NO_WORD_LIMITS = re.compile(r'\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>')
 
 
 class Section(BasicElementTags):
@@ -2762,6 +2876,8 @@ class Section(BasicElementTags):
 
     @sectionContent.setter
     def sectionContent(self, text):
+        if text is not None:
+            assert type(text) == str
         if self._sectionContent != text:
             self._sectionContent = text
             if text is not None:
@@ -2779,6 +2895,8 @@ class Section(BasicElementTags):
 
     @scType.setter
     def scType(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._scType != newVal:
             self._scType = newVal
             self.on_element_change()
@@ -2789,6 +2907,8 @@ class Section(BasicElementTags):
 
     @scene.setter
     def scene(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._scene != newVal:
             self._scene = newVal
             self.on_element_change()
@@ -2799,6 +2919,8 @@ class Section(BasicElementTags):
 
     @status.setter
     def status(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
         if self._status != newVal:
             self._status = newVal
             self.on_element_change()
@@ -2809,6 +2931,8 @@ class Section(BasicElementTags):
 
     @appendToPrev.setter
     def appendToPrev(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
         if self._appendToPrev != newVal:
             self._appendToPrev = newVal
             self.on_element_change()
@@ -2819,6 +2943,8 @@ class Section(BasicElementTags):
 
     @goal.setter
     def goal(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._goal != newVal:
             self._goal = newVal
             self.on_element_change()
@@ -2829,6 +2955,8 @@ class Section(BasicElementTags):
 
     @conflict.setter
     def conflict(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._conflict != newVal:
             self._conflict = newVal
             self.on_element_change()
@@ -2839,6 +2967,8 @@ class Section(BasicElementTags):
 
     @outcome.setter
     def outcome(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._outcome != newVal:
             self._outcome = newVal
             self.on_element_change()
@@ -2852,6 +2982,11 @@ class Section(BasicElementTags):
 
     @plotlineNotes.setter
     def plotlineNotes(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                val = newVal[elem]
+                if val is not None:
+                    assert type(val) == str
         if self._plotlineNotes != newVal:
             self._plotlineNotes = newVal
             self.on_element_change()
@@ -2862,6 +2997,8 @@ class Section(BasicElementTags):
 
     @date.setter
     def date(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._date != newVal:
             if not newVal:
                 self._date = None
@@ -2897,6 +3034,8 @@ class Section(BasicElementTags):
 
     @time.setter
     def time(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._time != newVal:
             self._time = newVal
             self.on_element_change()
@@ -2907,6 +3046,8 @@ class Section(BasicElementTags):
 
     @day.setter
     def day(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._day != newVal:
             self._day = newVal
             self.on_element_change()
@@ -2917,6 +3058,8 @@ class Section(BasicElementTags):
 
     @lastsMinutes.setter
     def lastsMinutes(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._lastsMinutes != newVal:
             self._lastsMinutes = newVal
             self.on_element_change()
@@ -2927,6 +3070,8 @@ class Section(BasicElementTags):
 
     @lastsHours.setter
     def lastsHours(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._lastsHours != newVal:
             self._lastsHours = newVal
             self.on_element_change()
@@ -2937,6 +3082,8 @@ class Section(BasicElementTags):
 
     @lastsDays.setter
     def lastsDays(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
         if self._lastsDays != newVal:
             self._lastsDays = newVal
             self.on_element_change()
@@ -2950,6 +3097,10 @@ class Section(BasicElementTags):
 
     @characters.setter
     def characters(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
         if self._characters != newVal:
             self._characters = newVal
             self.on_element_change()
@@ -2963,6 +3114,10 @@ class Section(BasicElementTags):
 
     @locations.setter
     def locations(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
         if self._locations != newVal:
             self._locations = newVal
             self.on_element_change()
@@ -2976,6 +3131,10 @@ class Section(BasicElementTags):
 
     @items.setter
     def items(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
         if self._items != newVal:
             self._items = newVal
             self.on_element_change()
@@ -3083,9 +3242,10 @@ class Section(BasicElementTags):
                     scItems.append(itId)
         self.items = scItems
 
-        if xmlElement.find('Content'):
+        xmlContent = xmlElement.find('Content')
+        if xmlContent is not None:
             xmlStr = ET.tostring(
-                xmlElement.find('Content'),
+                xmlContent,
                 encoding='utf-8',
                 short_empty_elements=False
                 ).decode('utf-8')
@@ -3253,7 +3413,10 @@ class NovxFile(File):
         return count, totalCount
 
     def read(self):
-        self.xmlTree = ET.parse(self.filePath)
+        try:
+            self.xmlTree = ET.parse(self.filePath)
+        except Exception as ex:
+            raise Error(f'{_("Cannot process file")}: "{norm_path(self.filePath)}" - {str(ex)}')
         xmlRoot = self.xmlTree.getroot()
         self._check_xml(xmlRoot)
         try:
@@ -3562,7 +3725,7 @@ class NovxFile(File):
                 backedUp = True
         try:
             xmlProject.xmlTree.write(xmlProject.filePath, xml_declaration=False, encoding='utf-8')
-        except Error:
+        except:
             if backedUp:
                 os.replace(f'{xmlProject.filePath}.bak', xmlProject.filePath)
             raise Error(f'{_("Cannot write file")}: "{norm_path(xmlProject.filePath)}".')
