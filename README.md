@@ -1,4 +1,4 @@
-# Convert *novelyst* projects and collections for *novelibre* 
+# Upgrade *novelyst* projects and collections for *novelibre* 
 
 The *yw_novx.py* and *upgrade_collection.py* scripts help with the migration from [novelyst](https://peter88213.github.io/novelyst/) to [novelibre](https://github.com/peter88213/novelibre).
 
