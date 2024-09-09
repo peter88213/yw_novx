@@ -14,7 +14,7 @@ import sys
 
 import inliner
 
-sys.path.insert(0, f'{os.getcwd()}/../../novxlib/src')
+sys.path.insert(0, f'{os.getcwd()}/../../novelibre/tools')
 
 SOURCE_DIR = '../src/'
 TEST_DIR = '../build/'

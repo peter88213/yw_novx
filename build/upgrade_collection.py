@@ -2125,6 +2125,20 @@ class File(ABC):
 
 
 
+def strip_illegal_characters(text):
+    return re.sub('[\x00-\x08|\x0b-\x0c|\x0e-\x1f]', '', text)
+
+
+
+def get_xml_root(filePath):
+    try:
+        xmlTree = ET.parse(filePath)
+    except Exception as ex:
+        raise Error(f'{_("Cannot process file")}: "{norm_path(filePath)}" - {str(ex)}')
+
+    return xmlTree.getroot()
+
+
 class NovxFile(File):
     DESCRIPTION = _('novelibre project')
     EXTENSION = '.novx'
@@ -2172,12 +2186,8 @@ class NovxFile(File):
         return count, totalCount
 
     def read(self):
-        try:
-            self.xmlTree = ET.parse(self.filePath)
-        except Exception as ex:
-            raise Error(f'{_("Cannot process file")}: "{norm_path(self.filePath)}" - {str(ex)}')
-        xmlRoot = self.xmlTree.getroot()
-        self._check_xml(xmlRoot)
+        xmlRoot = get_xml_root(self.filePath)
+        self._check_version(xmlRoot)
         try:
             locale = xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
             self.novel.languageCode, self.novel.countryCode = locale.split('-')
@@ -2288,7 +2298,7 @@ class NovxFile(File):
         if not elemId.startswith(elemPrefix):
             raise Error(f"bad ID: '{elemId}'")
 
-    def _check_xml(self, xmlRoot):
+    def _check_version(self, xmlRoot):
         if xmlRoot.tag != 'novx':
             raise Error(f'{_("No valid xml root element found in file")}: "{norm_path(self.filePath)}".')
         try:
@@ -2330,6 +2340,7 @@ class NovxFile(File):
     def _postprocess_xml_file(self, filePath):
         with open(filePath, 'r', encoding='utf-8') as f:
             text = f.read()
+            text = strip_illegal_characters(text)
         try:
             with open(filePath, 'w', encoding='utf-8') as f:
                 f.write(f'{self.XML_HEADER}{text}')
