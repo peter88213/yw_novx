@@ -333,6 +333,59 @@ except:
     def _(message):
         return message
 
+from html.parser import HTMLParser
+from html import escape
+
+
+class XmlFixer(HTMLParser):
+
+    def __init__(self):
+        super().__init__()
+        self._fixedXmlStr = []
+        self._format = []
+
+    def get_fixed_xml(self, xmlStr):
+        self.feed(xmlStr)
+        fixedXmlStr = ''.join(self._fixedXmlStr)
+        fixedXmlStr = fixedXmlStr.replace('<em></em>', '')
+        fixedXmlStr = fixedXmlStr.replace('<strong></strong>', '')
+        fixedXmlStr = fixedXmlStr.replace('<em></em>', '')
+        return fixedXmlStr
+
+    def handle_data(self, data):
+        self._fixedXmlStr.append(escape(data))
+
+    def handle_endtag(self, tag):
+        if tag == 'em':
+            if not tag in self._format:
+                return
+
+            if  self._format[-1] == 'strong':
+                self._fixedXmlStr.append(f'</strong>')
+                self._format.remove('strong')
+
+            self._format.remove(tag)
+        elif tag == 'strong':
+            if not tag in self._format:
+                return
+
+            if self._format[-1] == 'em':
+                self._fixedXmlStr.append(f'</em>')
+                self._format.remove('em')
+            self._format.remove(tag)
+        self._fixedXmlStr.append(f'</{tag}>')
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('em', 'strong'):
+            if tag in self._format:
+                return
+
+            self._format.append(tag)
+        attrStr = ''
+        for name, value in attrs:
+            attrStr = f'{attrStr} {name}="{value}"'
+        self._fixedXmlStr.append(f'<{tag}{attrStr}>')
+
 import xml.etree.ElementTree as ET
 
 
@@ -930,68 +983,71 @@ class Yw7File(File):
                     f'<p>{match.group(1)}</p></comment>')
 
         if not text:
-            text = ''
-        else:
-            text = text.replace('<RTFBRK>', '')
-            text = re.sub(r'\[\/*[h|c|r|s|u]\d*\]', '', text)
-            for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
-                text = re.sub(fr'\<{specialCode} .+?\/{specialCode}\>', '', text)
+            return ''
 
-            xmlReplacements = [
-                ('&', '&amp;'),
-                ('>', '&gt;'),
-                ('<', '&lt;'),
-                ("'", '&apos;'),
-                ('"', '&quot;'),
-                ('\n', '</p><p>'),
-                ('[i]', '<em>'),
-                ('[/i]', '</em>'),
-                ('[b]', '<strong>'),
-                ('[/b]', '</strong>'),
-                ]
-            tags = ['i', 'b']
-            if self.novel.languages is None:
-                self.novel.get_languages()
-            for language in self.novel.languages:
-                tags.append(f'lang={language}')
-                xmlReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
-                xmlReplacements.append((f'[/lang={language}]', '</span>'))
+        text = text.replace('<RTFBRK>', '')
+        text = re.sub(r'\[\/*[h|c|r|s|u]\d*\]', '', text)
+        for specialCode in ('HTM', 'TEX', 'RTF', 'epub', 'mobi', 'rtfimg'):
+            text = re.sub(fr'\<{specialCode} .+?\/{specialCode}\>', '', text)
 
-            newlines = []
-            lines = text.split('\n')
-            isOpen = {}
-            opening = {}
-            closing = {}
+        xmlReplacements = [
+            ('&', '&amp;'),
+            ('>', '&gt;'),
+            ('<', '&lt;'),
+            ("'", '&apos;'),
+            ('"', '&quot;'),
+            ('\n', '</p><p>'),
+            ('[i]', '<em>'),
+            ('[/i]', '</em>'),
+            ('[b]', '<strong>'),
+            ('[/b]', '</strong>'),
+            ]
+        tags = ['i', 'b']
+        if self.novel.languages is None:
+            self.novel.get_languages()
+        for language in self.novel.languages:
+            tags.append(f'lang={language}')
+            xmlReplacements.append((f'[lang={language}]', f'<span xml:lang="{language}">'))
+            xmlReplacements.append((f'[/lang={language}]', '</span>'))
+
+        newlines = []
+        lines = text.split('\n')
+        isOpen = {}
+        opening = {}
+        closing = {}
+        for tag in tags:
+            isOpen[tag] = False
+            opening[tag] = f'[{tag}]'
+            closing[tag] = f'[/{tag}]'
+        for line in lines:
             for tag in tags:
-                isOpen[tag] = False
-                opening[tag] = f'[{tag}]'
-                closing[tag] = f'[/{tag}]'
-            for line in lines:
-                for tag in tags:
-                    if isOpen[tag]:
-                        if line.startswith('&gt; '):
-                            line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
-                        else:
-                            line = f'{opening[tag]}{line}'
-                        isOpen[tag] = False
-                    while line.count(opening[tag]) > line.count(closing[tag]):
-                        line = f'{line}{closing[tag]}'
-                        isOpen[tag] = True
-                    while line.count(closing[tag]) > line.count(opening[tag]):
+                if isOpen[tag]:
+                    if line.startswith('&gt; '):
+                        line = f"&gt; {opening[tag]}{line.lstrip('&gt; ')}"
+                    else:
                         line = f'{opening[tag]}{line}'
-                    line = line.replace(f'{opening[tag]}{closing[tag]}', '')
-                newlines.append(line)
-            text = '\n'.join(newlines).rstrip()
+                    isOpen[tag] = False
+                while line.count(opening[tag]) > line.count(closing[tag]):
+                    line = f'{line}{closing[tag]}'
+                    isOpen[tag] = True
+                while line.count(closing[tag]) > line.count(opening[tag]):
+                    line = f'{opening[tag]}{line}'
+                line = line.replace(f'{opening[tag]}{closing[tag]}', '')
+            newlines.append(line)
+        text = '\n'.join(newlines).rstrip()
 
-            for nv, od in xmlReplacements:
-                text = text.replace(nv, od)
+        for nv, od in xmlReplacements:
+            text = text.replace(nv, od)
 
-            if text.find('/*') > 0:
-                text = re.sub(r'\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
-                text = re.sub(r'\/\*(.*?)\*\/', replace_comment, text)
+        fixer = XmlFixer()
+        text = fixer.get_fixed_xml(text)
 
-            text = f'<p>{text}</p>'
-            text = re.sub(r'\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
+        if text.find('/*') > 0:
+            text = re.sub(r'\/\* *@([ef]n\**) (.*?)\*\/', replace_note, text)
+            text = re.sub(r'\/\*(.*?)\*\/', replace_comment, text)
+
+        text = f'<p>{text}</p>'
+        text = re.sub(r'\<p\>\&gt\; (.*?)\<\/p\>', '<p style="quotations">\\1</p>', text)
         return text
 
     def _postprocess_xml_file(self, filePath):
@@ -1110,7 +1166,7 @@ class Yw7File(File):
                     xmlField = xmlChapterFields.find(fieldName)
                     if xmlField  is not None:
                         kwVarYw7[fieldName] = xmlField .text
-            prjChapter.noNumber = kwVarYw7.get('Field_NoNumber', False)
+            prjChapter.noNumber = kwVarYw7.get('Field_NoNumber', False) == '1'
             shortName = kwVarYw7.get('Field_ArcDefinition', '')
 
             field = kwVarYw7.get('Field_Arc_Definition', None)
@@ -1217,13 +1273,17 @@ class Yw7File(File):
             for fieldName in self.PRJ_KWVAR_YW7:
                 xmlField = xmlProjectFields.find(fieldName)
                 if xmlField  is not None:
-                    kwVarYw7[fieldName] = xmlField .text
-        self.novel.workPhase = kwVarYw7.get('Field_WorkPhase', None)
-        self.novel.renumberChapters = kwVarYw7.get('Field_RenumberChapters', False)
-        self.novel.renumberParts = kwVarYw7.get('Field_RenumberParts', False)
-        self.novel.renumberWithinParts = kwVarYw7.get('Field_RenumberWithinParts', False)
-        self.novel.romanChapterNumbers = kwVarYw7.get('Field_RomanChapterNumbers', False)
-        self.novel.romanPartNumbers = kwVarYw7.get('Field_RomanPartNumbers', False)
+                    if xmlField.text:
+                        kwVarYw7[fieldName] = xmlField.text
+        try:
+            self.novel.workPhase = int(kwVarYw7.get('Field_WorkPhase', None))
+        except:
+            self.novel.workPhase = None
+        self.novel.renumberChapters = kwVarYw7.get('Field_RenumberChapters', False) == '1'
+        self.novel.renumberParts = kwVarYw7.get('Field_RenumberParts', False) == '1'
+        self.novel.renumberWithinParts = kwVarYw7.get('Field_RenumberWithinParts', False) == '1'
+        self.novel.romanChapterNumbers = kwVarYw7.get('Field_RomanChapterNumbers', False) == '1'
+        self.novel.romanPartNumbers = kwVarYw7.get('Field_RomanPartNumbers', False) == '1'
         self.novel.chapterHeadingPrefix = kwVarYw7.get('Field_ChapterHeadingPrefix', '')
         self.novel.chapterHeadingSuffix = kwVarYw7.get('Field_ChapterHeadingSuffix', '')
         self.novel.partHeadingPrefix = kwVarYw7.get('Field_PartHeadingPrefix', '')
@@ -1233,7 +1293,7 @@ class Yw7File(File):
         self.novel.customOutcome = kwVarYw7.get('Field_CustomOutcome', '')
         self.novel.customChrBio = kwVarYw7.get('Field_CustomChrBio', '')
         self.novel.customChrGoals = kwVarYw7.get('Field_CustomChrGoals', '')
-        self.novel.saveWordCount = kwVarYw7.get('Field_SaveWordCount', False)
+        self.novel.saveWordCount = kwVarYw7.get('Field_SaveWordCount', False) == '1'
 
         field = kwVarYw7.get('Field_LanguageCode', None)
         if field is not None:
