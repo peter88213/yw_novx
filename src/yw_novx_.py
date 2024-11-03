@@ -11,7 +11,7 @@ import sys
 import os
 
 from nvywlib.yw7_file import Yw7File
-from nvlib.model.nv_service import NvService
+from nvlib.nv_service import NvService
 
 
 def yw_novx(sourcePath):
