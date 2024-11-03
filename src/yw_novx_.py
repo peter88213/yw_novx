@@ -10,8 +10,8 @@ SUFFIX = ''
 import sys
 import os
 
-from nvywlib.yw7_file import Yw7File
-from nvlib.nv_service import NvService
+from nvyw7lib.yw7_file import Yw7File
+from nvlib.novx_service import NovxService
 
 
 def yw_novx(sourcePath):
@@ -19,7 +19,7 @@ def yw_novx(sourcePath):
     if extension != '.yw7':
         raise ValueError(f'File must be .yw7 type, but is "{extension}".')
 
-    nvService = NvService()
+    nvService = NovxService()
     targetPath = f'{path}.novx'
     source = Yw7File(sourcePath, nv_service=nvService)
     target = nvService.make_novx_file(targetPath)

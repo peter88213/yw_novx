@@ -35,251 +35,7 @@ def indent(elem, level=0):
 SUFFIX = ''
 
 
-from nvywlib.yw7_file import Yw7File
-from configparser import ConfigParser
-
-
-class Configuration:
-
-    def __init__(self, settings={}, options={}):
-        self.settings = None
-        self.options = None
-        self._sLabel = 'SETTINGS'
-        self._oLabel = 'OPTIONS'
-        self.set(settings, options)
-
-    def read(self, iniFile):
-        config = ConfigParser()
-        config.read(iniFile, encoding='utf-8')
-        if config.has_section(self._sLabel):
-            section = config[self._sLabel]
-            for setting in self.settings:
-                fallback = self.settings[setting]
-                self.settings[setting] = section.get(setting, fallback)
-        if config.has_section(self._oLabel):
-            section = config[self._oLabel]
-            for option in self.options:
-                fallback = self.options[option]
-                self.options[option] = section.getboolean(option, fallback)
-
-    def set(self, settings=None, options=None):
-        if settings is not None:
-            self.settings = settings.copy()
-        if options is not None:
-            self.options = options.copy()
-
-    def write(self, iniFile):
-        config = ConfigParser()
-        if self.settings:
-            config.add_section(self._sLabel)
-            for settingId in self.settings:
-                config.set(self._sLabel, settingId, str(self.settings[settingId]))
-        if self.options:
-            config.add_section(self._oLabel)
-            for settingId in self.options:
-                if self.options[settingId]:
-                    config.set(self._oLabel, settingId, 'Yes')
-                else:
-                    config.set(self._oLabel, settingId, 'No')
-        with open(iniFile, 'w', encoding='utf-8') as f:
-            config.write(f)
-import math
-
-
-def get_moon_phase_day(isoDate):
-    try:
-        y, m, d = isoDate.split('-')
-        year = int(y)
-        month = int(m)
-        day = int(d)
-        r = year % 100
-        r %= 19
-        if r > 9:
-            r -= 19
-        r = ((r * 11) % 30) + month + day
-        if month < 3:
-            r += 2
-        if year < 2000:
-            r -= 4
-        else:
-            r -= 8.3
-        r = math.floor(r + 0.5) % 30
-        if r < 0:
-            r += 30
-    except:
-        r = None
-    return r
-
-
-def get_moon_phase_string(isoDate):
-    moonViews = [
-        '🌑',
-        '🌑',
-        '🌒',
-        '🌒',
-        '🌒',
-        '🌒',
-        '🌓',
-        '🌓',
-        '🌓',
-        '🌓',
-        '🌔',
-        '🌔',
-        '🌔',
-        '🌔',
-        '🌕',
-        '🌕',
-        '🌕',
-        '🌖',
-        '🌖',
-        '🌖',
-        '🌖',
-        '🌗',
-        '🌗',
-        '🌗',
-        '🌗',
-        '🌘',
-        '🌘',
-        '🌘',
-        '🌘',
-        '🌑'
-    ]
-    moonFractions = '00¼¼¼¼½½½½¾¾¾¾111¾¾¾¾½½½½¼¼¼¼0'
-    moonPhaseDay = get_moon_phase_day(isoDate)
-    if moonPhaseDay is not None:
-        display = f'{moonPhaseDay} {moonViews[moonPhaseDay]} {moonFractions[moonPhaseDay]}'
-    else:
-        display = ''
-    return display
-
-from datetime import date
-import locale
-import re
-
-from calendar import day_name
-from calendar import month_name
-from datetime import date
-from datetime import time
-import gettext
-
-ROOT_PREFIX = 'rt'
-CHAPTER_PREFIX = 'ch'
-PLOT_LINE_PREFIX = 'ac'
-SECTION_PREFIX = 'sc'
-PLOT_POINT_PREFIX = 'ap'
-CHARACTER_PREFIX = 'cr'
-LOCATION_PREFIX = 'lc'
-ITEM_PREFIX = 'it'
-PRJ_NOTE_PREFIX = 'pn'
-CH_ROOT = f'{ROOT_PREFIX}{CHAPTER_PREFIX}'
-PL_ROOT = f'{ROOT_PREFIX}{PLOT_LINE_PREFIX}'
-CR_ROOT = f'{ROOT_PREFIX}{CHARACTER_PREFIX}'
-LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
-IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
-PN_ROOT = f'{ROOT_PREFIX}{PRJ_NOTE_PREFIX}'
-
-BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
-CHAPTERS_SUFFIX = '_chapters_tmp'
-CHARACTER_REPORT_SUFFIX = '_character_report'
-CHARACTERS_SUFFIX = '_characters_tmp'
-CHARLIST_SUFFIX = '_charlist_tmp'
-DATA_SUFFIX = '_data'
-GRID_SUFFIX = '_grid_tmp'
-ITEM_REPORT_SUFFIX = '_item_report'
-ITEMLIST_SUFFIX = '_itemlist_tmp'
-ITEMS_SUFFIX = '_items_tmp'
-LOCATION_REPORT_SUFFIX = '_location_report'
-LOCATIONS_SUFFIX = '_locations_tmp'
-LOCLIST_SUFFIX = '_loclist_tmp'
-MANUSCRIPT_SUFFIX = '_manuscript_tmp'
-PARTS_SUFFIX = '_parts_tmp'
-PLOTLIST_SUFFIX = '_plotlist'
-PLOTLINES_SUFFIX = '_plotlines_tmp'
-PROJECTNOTES_SUFFIX = '_projectnote_report'
-PROOF_SUFFIX = '_proof_tmp'
-SECTIONLIST_SUFFIX = '_sectionlist'
-SECTIONS_SUFFIX = '_sections_tmp'
-STAGES_SUFFIX = '_structure_tmp'
-XREF_SUFFIX = '_xref'
-
-
-class Error(Exception):
-    pass
-
-
-try:
-    LOCALE_PATH
-except NameError:
-    locale.setlocale(locale.LC_TIME, "")
-    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
-    try:
-        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
-    except:
-        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
-    try:
-        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
-        _ = t.gettext
-    except:
-
-        def _(message):
-            return message
-
-WEEKDAYS = day_name
-MONTHS = month_name
-
-
-def norm_path(path):
-    if path is None:
-        path = ''
-    return os.path.normpath(path)
-
-
-def string_to_list(text, divider=';'):
-    elements = []
-    try:
-        tempList = text.split(divider)
-        for element in tempList:
-            element = element.strip()
-            if element and not element in elements:
-                elements.append(element)
-        return elements
-
-    except:
-        return []
-
-
-def list_to_string(elements, divider=';'):
-    try:
-        text = divider.join(elements)
-        return text
-
-    except:
-        return ''
-
-
-def intersection(elemList, refList):
-    return [elem for elem in elemList if elem in refList]
-
-
-def verified_date(dateStr):
-    if dateStr is not None:
-        date.fromisoformat(dateStr)
-    return dateStr
-
-
-def verified_int_string(intStr):
-    if intStr is not None:
-        int(intStr)
-    return intStr
-
-
-def verified_time(timeStr):
-    if  timeStr is not None:
-        time.fromisoformat(timeStr)
-        while timeStr.count(':') < 2:
-            timeStr = f'{timeStr}:00'
-    return timeStr
-
+from nvyw7lib.yw7_file import Yw7File
 
 
 class BasicElement:
@@ -295,7 +51,10 @@ class BasicElement:
             self.on_element_change = on_element_change
         self._title = title
         self._desc = desc
-        self._links = links
+        if links is None:
+            self._links = {}
+        else:
+            self._links = links
 
     @property
     def title(self):
@@ -396,6 +155,445 @@ class BasicElement:
             for paragraph in xmlElement.iterfind('p'):
                 lines.append(''.join(t for t in paragraph.itertext()))
         return '\n'.join(lines)
+
+
+
+class BasicElementNotes(BasicElement):
+
+    def __init__(self,
+            notes=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._notes = notes
+
+    @property
+    def notes(self):
+        return self._notes
+
+    @notes.setter
+    def notes(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._notes != newVal:
+            self._notes = newVal
+            self.on_element_change()
+
+    def from_xml(self, xmlElement):
+        super().from_xml(xmlElement)
+        self.notes = self._xml_element_to_text(xmlElement.find('Notes'))
+
+    def to_xml(self, xmlElement):
+        super().to_xml(xmlElement)
+        if self.notes:
+            xmlElement.append(self._text_to_xml_element('Notes', self.notes))
+
+
+
+class Chapter(BasicElementNotes):
+
+    def __init__(self,
+            chLevel=None,
+            chType=None,
+            noNumber=None,
+            isTrash=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._chLevel = chLevel
+        self._chType = chType
+        self._noNumber = noNumber
+        self._isTrash = isTrash
+
+    @property
+    def chLevel(self):
+        return self._chLevel
+
+    @chLevel.setter
+    def chLevel(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
+        if self._chLevel != newVal:
+            self._chLevel = newVal
+            self.on_element_change()
+
+    @property
+    def chType(self):
+        return self._chType
+
+    @chType.setter
+    def chType(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == int
+        if self._chType != newVal:
+            self._chType = newVal
+            self.on_element_change()
+
+    @property
+    def noNumber(self):
+        return self._noNumber
+
+    @noNumber.setter
+    def noNumber(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
+        if self._noNumber != newVal:
+            self._noNumber = newVal
+            self.on_element_change()
+
+    @property
+    def isTrash(self):
+        return self._isTrash
+
+    @isTrash.setter
+    def isTrash(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
+        if self._isTrash != newVal:
+            self._isTrash = newVal
+            self.on_element_change()
+
+    def from_xml(self, xmlElement):
+        super().from_xml(xmlElement)
+        typeStr = xmlElement.get('type', '0')
+        if typeStr in ('0', '1'):
+            self.chType = int(typeStr)
+        else:
+            self.chType = 1
+        chLevel = xmlElement.get('level', None)
+        if chLevel == '1':
+            self.chLevel = 1
+        else:
+            self.chLevel = 2
+        self.isTrash = xmlElement.get('isTrash', None) == '1'
+        self.noNumber = xmlElement.get('noNumber', None) == '1'
+
+    def to_xml(self, xmlElement):
+        super().to_xml(xmlElement)
+        if self.chType:
+            xmlElement.set('type', str(self.chType))
+        if self.chLevel == 1:
+            xmlElement.set('level', '1')
+        if self.isTrash:
+            xmlElement.set('isTrash', '1')
+        if self.noNumber:
+            xmlElement.set('noNumber', '1')
+from calendar import day_name
+from calendar import month_name
+from datetime import date
+from datetime import time
+import gettext
+import locale
+
+ROOT_PREFIX = 'rt'
+CHAPTER_PREFIX = 'ch'
+PLOT_LINE_PREFIX = 'ac'
+SECTION_PREFIX = 'sc'
+PLOT_POINT_PREFIX = 'ap'
+CHARACTER_PREFIX = 'cr'
+LOCATION_PREFIX = 'lc'
+ITEM_PREFIX = 'it'
+PRJ_NOTE_PREFIX = 'pn'
+CH_ROOT = f'{ROOT_PREFIX}{CHAPTER_PREFIX}'
+PL_ROOT = f'{ROOT_PREFIX}{PLOT_LINE_PREFIX}'
+CR_ROOT = f'{ROOT_PREFIX}{CHARACTER_PREFIX}'
+LC_ROOT = f'{ROOT_PREFIX}{LOCATION_PREFIX}'
+IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
+PN_ROOT = f'{ROOT_PREFIX}{PRJ_NOTE_PREFIX}'
+
+BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
+CHAPTERS_SUFFIX = '_chapters_tmp'
+CHARACTER_REPORT_SUFFIX = '_character_report'
+CHARACTERS_SUFFIX = '_characters_tmp'
+CHARLIST_SUFFIX = '_charlist_tmp'
+DATA_SUFFIX = '_data'
+GRID_SUFFIX = '_grid_tmp'
+ITEM_REPORT_SUFFIX = '_item_report'
+ITEMLIST_SUFFIX = '_itemlist_tmp'
+ITEMS_SUFFIX = '_items_tmp'
+LOCATION_REPORT_SUFFIX = '_location_report'
+LOCATIONS_SUFFIX = '_locations_tmp'
+LOCLIST_SUFFIX = '_loclist_tmp'
+MANUSCRIPT_SUFFIX = '_manuscript_tmp'
+PARTS_SUFFIX = '_parts_tmp'
+PLOTLIST_SUFFIX = '_plotlist'
+PLOTLINES_SUFFIX = '_plotlines_tmp'
+PROJECTNOTES_SUFFIX = '_projectnote_report'
+PROOF_SUFFIX = '_proof_tmp'
+SECTIONLIST_SUFFIX = '_sectionlist'
+SECTIONS_SUFFIX = '_sections_tmp'
+STAGES_SUFFIX = '_structure_tmp'
+XREF_SUFFIX = '_xref'
+
+
+class Error(Exception):
+    pass
+
+
+class Notification(Error):
+    pass
+
+
+try:
+    LOCALE_PATH
+except NameError:
+    locale.setlocale(locale.LC_TIME, "")
+    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
+    try:
+        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
+    except:
+        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
+    try:
+        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+        _ = t.gettext
+    except:
+
+        def _(message):
+            return message
+
+WEEKDAYS = day_name
+MONTHS = month_name
+
+
+def norm_path(path):
+    if path is None:
+        path = ''
+    return os.path.normpath(path)
+
+
+def string_to_list(text, divider=';'):
+    elements = []
+    try:
+        tempList = text.split(divider)
+        for element in tempList:
+            element = element.strip()
+            if element and not element in elements:
+                elements.append(element)
+        return elements
+
+    except:
+        return []
+
+
+def list_to_string(elements, divider=';'):
+    try:
+        text = divider.join(elements)
+        return text
+
+    except:
+        return ''
+
+
+def intersection(elemList, refList):
+    return [elem for elem in elemList if elem in refList]
+
+
+def verified_date(dateStr):
+    if dateStr is not None:
+        date.fromisoformat(dateStr)
+    return dateStr
+
+
+def verified_int_string(intStr):
+    if intStr is not None:
+        int(intStr)
+    return intStr
+
+
+def verified_time(timeStr):
+    if  timeStr is not None:
+        time.fromisoformat(timeStr)
+        while timeStr.count(':') < 2:
+            timeStr = f'{timeStr}:00'
+    return timeStr
+
+
+
+class BasicElementTags(BasicElementNotes):
+
+    def __init__(self,
+            tags=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._tags = tags
+
+    @property
+    def tags(self):
+        return self._tags
+
+    @tags.setter
+    def tags(self, newVal):
+        if newVal is not None:
+            for elem in newVal:
+                if elem is not None:
+                    assert type(elem) == str
+        if self._tags != newVal:
+            self._tags = newVal
+            self.on_element_change()
+
+    def from_xml(self, xmlElement):
+        super().from_xml(xmlElement)
+        tags = string_to_list(self._get_element_text(xmlElement, 'Tags'))
+        strippedTags = []
+        for tag in tags:
+            strippedTags.append(tag.strip())
+        self.tags = strippedTags
+
+    def to_xml(self, xmlElement):
+        super().to_xml(xmlElement)
+        tagStr = list_to_string(self.tags)
+        if tagStr:
+            ET.SubElement(xmlElement, 'Tags').text = tagStr
+
+
+
+class WorldElement(BasicElementTags):
+
+    def __init__(self,
+            aka=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._aka = aka
+
+    @property
+    def aka(self):
+        return self._aka
+
+    @aka.setter
+    def aka(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._aka != newVal:
+            self._aka = newVal
+            self.on_element_change()
+
+    def from_xml(self, xmlElement):
+        super().from_xml(xmlElement)
+        self.aka = self._get_element_text(xmlElement, 'Aka')
+
+    def to_xml(self, xmlElement):
+        super().to_xml(xmlElement)
+        if self.aka:
+            ET.SubElement(xmlElement, 'Aka').text = self.aka
+
+
+
+class Character(WorldElement):
+    MAJOR_MARKER = 'Major'
+    MINOR_MARKER = 'Minor'
+
+    def __init__(self,
+            bio=None,
+            goals=None,
+            fullName=None,
+            isMajor=None,
+            birthDate=None,
+            deathDate=None,
+            **kwargs):
+        super().__init__(**kwargs)
+        self._bio = bio
+        self._goals = goals
+        self._fullName = fullName
+        self._isMajor = isMajor
+        self._birthDate = birthDate
+        self._deathDate = deathDate
+
+    @property
+    def bio(self):
+        return self._bio
+
+    @bio.setter
+    def bio(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._bio != newVal:
+            self._bio = newVal
+            self.on_element_change()
+
+    @property
+    def goals(self):
+        return self._goals
+
+    @goals.setter
+    def goals(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._goals != newVal:
+            self._goals = newVal
+            self.on_element_change()
+
+    @property
+    def fullName(self):
+        return self._fullName
+
+    @fullName.setter
+    def fullName(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._fullName != newVal:
+            self._fullName = newVal
+            self.on_element_change()
+
+    @property
+    def isMajor(self):
+        return self._isMajor
+
+    @isMajor.setter
+    def isMajor(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == bool
+        if self._isMajor != newVal:
+            self._isMajor = newVal
+            self.on_element_change()
+
+    @property
+    def birthDate(self):
+        return self._birthDate
+
+    @birthDate.setter
+    def birthDate(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._birthDate != newVal:
+            self._birthDate = newVal
+            self.on_element_change()
+
+    @property
+    def deathDate(self):
+        return self._deathDate
+
+    @deathDate.setter
+    def deathDate(self, newVal):
+        if newVal is not None:
+            assert type(newVal) == str
+        if self._deathDate != newVal:
+            self._deathDate = newVal
+            self.on_element_change()
+
+    def from_xml(self, xmlElement):
+        super().from_xml(xmlElement)
+        self.isMajor = xmlElement.get('major', None) == '1'
+        self.fullName = self._get_element_text(xmlElement, 'FullName')
+        self.bio = self._xml_element_to_text(xmlElement.find('Bio'))
+        self.goals = self._xml_element_to_text(xmlElement.find('Goals'))
+        self.birthDate = verified_date(self._get_element_text(xmlElement, 'BirthDate'))
+        self.deathDate = verified_date(self._get_element_text(xmlElement, 'DeathDate'))
+
+    def to_xml(self, xmlElement):
+        super().to_xml(xmlElement)
+        if self.isMajor:
+            xmlElement.set('major', '1')
+        if self.fullName:
+            ET.SubElement(xmlElement, 'FullName').text = self.fullName
+        if self.bio:
+            xmlElement.append(self._text_to_xml_element('Bio', self.bio))
+        if self.goals:
+            xmlElement.append(self._text_to_xml_element('Goals', self.goals))
+        if self.birthDate:
+            ET.SubElement(xmlElement, 'BirthDate').text = self.birthDate
+        if self.deathDate:
+            ET.SubElement(xmlElement, 'DeathDate').text = self.deathDate
+
+from datetime import date
+import re
 
 
 LANGUAGE_TAG = re.compile(r'\<span xml\:lang=\"(.*?)\"\>')
@@ -935,313 +1133,6 @@ class Novel(BasicElement):
                         if self.plotPoints[ppId].sectionAssoc == scId:
                             self.sections[scId].scPlotPoints[ppId] = plId
                             break
-
-
-
-class BasicElementNotes(BasicElement):
-
-    def __init__(self,
-            notes=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._notes = notes
-
-    @property
-    def notes(self):
-        return self._notes
-
-    @notes.setter
-    def notes(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._notes != newVal:
-            self._notes = newVal
-            self.on_element_change()
-
-    def from_xml(self, xmlElement):
-        super().from_xml(xmlElement)
-        self.notes = self._xml_element_to_text(xmlElement.find('Notes'))
-
-    def to_xml(self, xmlElement):
-        super().to_xml(xmlElement)
-        if self.notes:
-            xmlElement.append(self._text_to_xml_element('Notes', self.notes))
-
-
-
-class Chapter(BasicElementNotes):
-
-    def __init__(self,
-            chLevel=None,
-            chType=None,
-            noNumber=None,
-            isTrash=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._chLevel = chLevel
-        self._chType = chType
-        self._noNumber = noNumber
-        self._isTrash = isTrash
-
-    @property
-    def chLevel(self):
-        return self._chLevel
-
-    @chLevel.setter
-    def chLevel(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == int
-        if self._chLevel != newVal:
-            self._chLevel = newVal
-            self.on_element_change()
-
-    @property
-    def chType(self):
-        return self._chType
-
-    @chType.setter
-    def chType(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == int
-        if self._chType != newVal:
-            self._chType = newVal
-            self.on_element_change()
-
-    @property
-    def noNumber(self):
-        return self._noNumber
-
-    @noNumber.setter
-    def noNumber(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == bool
-        if self._noNumber != newVal:
-            self._noNumber = newVal
-            self.on_element_change()
-
-    @property
-    def isTrash(self):
-        return self._isTrash
-
-    @isTrash.setter
-    def isTrash(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == bool
-        if self._isTrash != newVal:
-            self._isTrash = newVal
-            self.on_element_change()
-
-    def from_xml(self, xmlElement):
-        super().from_xml(xmlElement)
-        typeStr = xmlElement.get('type', '0')
-        if typeStr in ('0', '1'):
-            self.chType = int(typeStr)
-        else:
-            self.chType = 1
-        chLevel = xmlElement.get('level', None)
-        if chLevel == '1':
-            self.chLevel = 1
-        else:
-            self.chLevel = 2
-        self.isTrash = xmlElement.get('isTrash', None) == '1'
-        self.noNumber = xmlElement.get('noNumber', None) == '1'
-
-    def to_xml(self, xmlElement):
-        super().to_xml(xmlElement)
-        if self.chType:
-            xmlElement.set('type', str(self.chType))
-        if self.chLevel == 1:
-            xmlElement.set('level', '1')
-        if self.isTrash:
-            xmlElement.set('isTrash', '1')
-        if self.noNumber:
-            xmlElement.set('noNumber', '1')
-
-
-class BasicElementTags(BasicElementNotes):
-
-    def __init__(self,
-            tags=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._tags = tags
-
-    @property
-    def tags(self):
-        return self._tags
-
-    @tags.setter
-    def tags(self, newVal):
-        if newVal is not None:
-            for elem in newVal:
-                if elem is not None:
-                    assert type(elem) == str
-        if self._tags != newVal:
-            self._tags = newVal
-            self.on_element_change()
-
-    def from_xml(self, xmlElement):
-        super().from_xml(xmlElement)
-        tags = string_to_list(self._get_element_text(xmlElement, 'Tags'))
-        strippedTags = []
-        for tag in tags:
-            strippedTags.append(tag.strip())
-        self.tags = strippedTags
-
-    def to_xml(self, xmlElement):
-        super().to_xml(xmlElement)
-        tagStr = list_to_string(self.tags)
-        if tagStr:
-            ET.SubElement(xmlElement, 'Tags').text = tagStr
-
-
-
-class WorldElement(BasicElementTags):
-
-    def __init__(self,
-            aka=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._aka = aka
-
-    @property
-    def aka(self):
-        return self._aka
-
-    @aka.setter
-    def aka(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._aka != newVal:
-            self._aka = newVal
-            self.on_element_change()
-
-    def from_xml(self, xmlElement):
-        super().from_xml(xmlElement)
-        self.aka = self._get_element_text(xmlElement, 'Aka')
-
-    def to_xml(self, xmlElement):
-        super().to_xml(xmlElement)
-        if self.aka:
-            ET.SubElement(xmlElement, 'Aka').text = self.aka
-
-
-
-class Character(WorldElement):
-    MAJOR_MARKER = 'Major'
-    MINOR_MARKER = 'Minor'
-
-    def __init__(self,
-            bio=None,
-            goals=None,
-            fullName=None,
-            isMajor=None,
-            birthDate=None,
-            deathDate=None,
-            **kwargs):
-        super().__init__(**kwargs)
-        self._bio = bio
-        self._goals = goals
-        self._fullName = fullName
-        self._isMajor = isMajor
-        self._birthDate = birthDate
-        self._deathDate = deathDate
-
-    @property
-    def bio(self):
-        return self._bio
-
-    @bio.setter
-    def bio(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._bio != newVal:
-            self._bio = newVal
-            self.on_element_change()
-
-    @property
-    def goals(self):
-        return self._goals
-
-    @goals.setter
-    def goals(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._goals != newVal:
-            self._goals = newVal
-            self.on_element_change()
-
-    @property
-    def fullName(self):
-        return self._fullName
-
-    @fullName.setter
-    def fullName(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._fullName != newVal:
-            self._fullName = newVal
-            self.on_element_change()
-
-    @property
-    def isMajor(self):
-        return self._isMajor
-
-    @isMajor.setter
-    def isMajor(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == bool
-        if self._isMajor != newVal:
-            self._isMajor = newVal
-            self.on_element_change()
-
-    @property
-    def birthDate(self):
-        return self._birthDate
-
-    @birthDate.setter
-    def birthDate(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._birthDate != newVal:
-            self._birthDate = newVal
-            self.on_element_change()
-
-    @property
-    def deathDate(self):
-        return self._deathDate
-
-    @deathDate.setter
-    def deathDate(self, newVal):
-        if newVal is not None:
-            assert type(newVal) == str
-        if self._deathDate != newVal:
-            self._deathDate = newVal
-            self.on_element_change()
-
-    def from_xml(self, xmlElement):
-        super().from_xml(xmlElement)
-        self.isMajor = xmlElement.get('major', None) == '1'
-        self.fullName = self._get_element_text(xmlElement, 'FullName')
-        self.bio = self._xml_element_to_text(xmlElement.find('Bio'))
-        self.goals = self._xml_element_to_text(xmlElement.find('Goals'))
-        self.birthDate = verified_date(self._get_element_text(xmlElement, 'BirthDate'))
-        self.deathDate = verified_date(self._get_element_text(xmlElement, 'DeathDate'))
-
-    def to_xml(self, xmlElement):
-        super().to_xml(xmlElement)
-        if self.isMajor:
-            xmlElement.set('major', '1')
-        if self.fullName:
-            ET.SubElement(xmlElement, 'FullName').text = self.fullName
-        if self.bio:
-            xmlElement.append(self._text_to_xml_element('Bio', self.bio))
-        if self.goals:
-            xmlElement.append(self._text_to_xml_element('Goals', self.goals))
-        if self.birthDate:
-            ET.SubElement(xmlElement, 'BirthDate').text = self.birthDate
-        if self.deathDate:
-            ET.SubElement(xmlElement, 'DeathDate').text = self.deathDate
 
 
 
@@ -1879,6 +1770,7 @@ class Section(BasicElementTags):
 
     def from_xml(self, xmlElement):
         super().from_xml(xmlElement)
+
         typeStr = xmlElement.get('type', '0')
         if typeStr in ('0', '1', '2', '3'):
             self.scType = int(typeStr)
@@ -1972,7 +1864,7 @@ class Section(BasicElementTags):
                 self.sectionContent = xmlStr
             else:
                 self.sectionContent = '<p></p>'
-        else:
+        elif self.scType < 2:
             self.sectionContent = '<p></p>'
 
     def get_end_date_time(self):
@@ -2538,68 +2430,6 @@ class NovxService:
     def make_novx_file(self, filePath, **kwargs):
         return NovxFile(filePath, **kwargs)
 
-from tkinter import ttk
-
-
-
-class NvTreeview(ttk.Treeview):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.on_element_change = self.do_nothing
-
-        self.append('', CH_ROOT)
-        self.append('', CR_ROOT)
-        self.append('', LC_ROOT)
-        self.append('', IT_ROOT)
-        self.append('', PL_ROOT)
-        self.append('', PN_ROOT)
-
-    def append(self, parent, iid, text=None):
-        if text is None:
-            text = iid
-        self.insert(parent, 'end', iid, text=text)
-
-    def delete(self, *items):
-        super().delete(*items)
-        self.on_element_change()
-
-    def delete_children(self, parent):
-        for child in self.get_children(parent):
-            self.delete(child)
-
-    def insert(self, parent, index, iid=None, **kw):
-        super().insert(parent, index, iid, **kw)
-        self.on_element_change()
-
-    def move(self, item, parent, index):
-        super().move(item, parent, index)
-        self.on_element_change()
-
-    def reset(self):
-        self.on_element_change = self.do_nothing
-        for rootElement in self.get_children(''):
-            for child in self.get_children(rootElement):
-                self.delete(child)
-
-    def do_nothing(self):
-        pass
-
-
-class NvService(NovxService):
-
-    def get_moon_phase_str(self, isoDate):
-        return get_moon_phase_string(isoDate)
-
-    def make_configuration(self, **kwargs):
-        return Configuration(**kwargs)
-
-    def make_novel(self, **kwargs):
-        kwargs['tree'] = kwargs.get('tree', NvTreeview())
-        return Novel(**kwargs)
-
-    def make_nv_tree(self, **kwargs):
-        return NvTreeview(**kwargs)
 
 
 def yw_novx(sourcePath):
