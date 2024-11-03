@@ -12,7 +12,7 @@ import sys
 import os
 import xml.etree.ElementTree as ET
 
-from novxlib.xml.xml_indent import indent
+from nvlib.model.xml.xml_indent import indent
 from yw_novx_ import yw_novx
 
 XML_HEADER = '''<?xml version="1.0" encoding="utf-8"?>
