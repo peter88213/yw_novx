@@ -22,8 +22,8 @@ def yw_novx(sourcePath):
     nvService = NovxService()
     targetPath = f'{path}.novx'
     source = Yw7File(sourcePath, nv_service=nvService)
-    target = nvService.make_novx_file(targetPath)
-    source.novel = nvService.make_novel()
+    target = nvService.new_novx_file(targetPath)
+    source.novel = nvService.new_novel()
     source.read()
     target.novel = source.novel
     target.wcLog = source.wcLog
