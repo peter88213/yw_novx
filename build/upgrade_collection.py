@@ -5,13 +5,12 @@
 - Convert the collection's .yw7 project files to .novx format. 
 
 Copyright (c) 2024 Peter Triesberger
-For further information see https://github.com/peter88213/
+For further information see https://github.com/peter88213/yw_novx
 License: GNU GPLv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 import sys
 import os
 import xml.etree.ElementTree as ET
-
 
 
 def indent(elem, level=0):
@@ -31,9 +30,10 @@ def indent(elem, level=0):
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
+
+
 #!/usr/bin/python3
 SUFFIX = ''
-
 
 from nvyw7lib.yw7_file import Yw7File
 
@@ -157,7 +157,6 @@ class BasicElement:
         return '\n'.join(lines)
 
 
-
 class BasicElementNotes(BasicElement):
 
     def __init__(self,
@@ -186,7 +185,6 @@ class BasicElementNotes(BasicElement):
         super().to_xml(xmlElement)
         if self.notes:
             xmlElement.append(self._text_to_xml_element('Notes', self.notes))
-
 
 
 class Chapter(BasicElementNotes):
@@ -276,6 +274,8 @@ class Chapter(BasicElementNotes):
             xmlElement.set('isTrash', '1')
         if self.noNumber:
             xmlElement.set('noNumber', '1')
+
+
 from calendar import day_name
 from calendar import month_name
 from datetime import date
@@ -406,7 +406,6 @@ def verified_time(timeStr):
     return timeStr
 
 
-
 class BasicElementTags(BasicElementNotes):
 
     def __init__(self,
@@ -444,7 +443,6 @@ class BasicElementTags(BasicElementNotes):
             ET.SubElement(xmlElement, 'Tags').text = tagStr
 
 
-
 class WorldElement(BasicElementTags):
 
     def __init__(self,
@@ -473,7 +471,6 @@ class WorldElement(BasicElementTags):
         super().to_xml(xmlElement)
         if self.aka:
             ET.SubElement(xmlElement, 'Aka').text = self.aka
-
 
 
 class Character(WorldElement):
@@ -592,9 +589,9 @@ class Character(WorldElement):
         if self.deathDate:
             ET.SubElement(xmlElement, 'DeathDate').text = self.deathDate
 
+
 from datetime import date
 import re
-
 
 LANGUAGE_TAG = re.compile(r'\<span xml\:lang=\"(.*?)\"\>')
 
@@ -1135,7 +1132,6 @@ class Novel(BasicElement):
                             break
 
 
-
 class NvTree:
 
     def __init__(self):
@@ -1265,7 +1261,6 @@ class NvTree:
             self.srtTurningPoints[item] = newchildren[:]
 
 
-
 class PlotLine(BasicElementNotes):
 
     def __init__(self,
@@ -1358,6 +1353,8 @@ class PlotPoint(BasicElementNotes):
         super().to_xml(xmlElement)
         if self.sectionAssoc:
             ET.SubElement(xmlElement, 'Section', attrib={'id': self.sectionAssoc})
+
+
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -1966,11 +1963,12 @@ class Section(BasicElementTags):
         if sectionContent:
             if not sectionContent in ('<p></p>', '<p />'):
                 xmlElement.append(ET.fromstring(f'<Content>{sectionContent}</Content>'))
+
+
 from datetime import date
 
 from abc import ABC
 from urllib.parse import quote
-
 
 
 class File(ABC):
@@ -2016,10 +2014,8 @@ class File(ABC):
         raise NotImplementedError
 
 
-
 def strip_illegal_characters(text):
     return re.sub('[\x00-\x08|\x0b-\x0c|\x0e-\x1f]', '', text)
-
 
 
 def get_xml_root(filePath):
@@ -2393,7 +2389,6 @@ class NovxFile(File):
             raise Error(f'{_("Cannot write file")}: "{norm_path(xmlProject.filePath)}".')
 
 
-
 class NovxService:
 
     def get_novx_file_extension(self):
@@ -2431,7 +2426,6 @@ class NovxService:
         return NovxFile(filePath, **kwargs)
 
 
-
 def yw_novx(sourcePath):
     path, extension = os.path.splitext(sourcePath)
     if extension != '.yw7':
@@ -2446,7 +2440,6 @@ def yw_novx(sourcePath):
     target.novel = source.novel
     target.wcLog = source.wcLog
     target.write()
-
 
 
 XML_HEADER = '''<?xml version="1.0" encoding="utf-8"?>
