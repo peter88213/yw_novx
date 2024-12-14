@@ -31,6 +31,7 @@ class BasicElement:
             self._links = {}
         else:
             self._links = links
+        self._fields = {}
 
     @property
     def title(self):
@@ -74,6 +75,16 @@ class BasicElement:
             self._links = newVal
             self.on_element_change()
 
+    @property
+    def fields(self):
+        return self._fields.copy()
+
+    @fields.setter
+    def fields(self, newVal):
+        if self._fields != newVal:
+            self._fields = newVal
+            self.on_element_change()
+
     def do_nothing(self):
         pass
 
@@ -81,24 +92,36 @@ class BasicElement:
         self.title = self._get_element_text(xmlElement, 'Title')
         self.desc = self._xml_element_to_text(xmlElement.find('Desc'))
         self.links = self._get_link_dict(xmlElement)
+        self.fields = self._get_fields(xmlElement)
 
     def to_xml(self, xmlElement):
         if self.title:
             ET.SubElement(xmlElement, 'Title').text = self.title
         if self.desc:
             xmlElement.append(self._text_to_xml_element('Desc', self.desc))
-        if self.links:
-            for path in self.links:
-                xmlLink = ET.SubElement(xmlElement, 'Link')
-                ET.SubElement(xmlLink, 'Path').text = path
-                if self.links[path]:
-                    ET.SubElement(xmlLink, 'FullPath').text = self.links[path]
+        for path in self.links:
+            xmlLink = ET.SubElement(xmlElement, 'Link')
+            ET.SubElement(xmlLink, 'Path').text = path
+            if self.links[path]:
+                ET.SubElement(xmlLink, 'FullPath').text = self.links[path]
+        for tag in self.fields:
+            xmlField = ET.SubElement(xmlElement, 'Field')
+            xmlField.set('tag', tag)
+            xmlField.text = self.fields[tag]
 
     def _get_element_text(self, xmlElement, tag, default=None):
         if xmlElement.find(tag) is not None:
             return xmlElement.find(tag).text
         else:
             return default
+
+    def _get_fields(self, xmlElement):
+        fields = {}
+        for xmlField in xmlElement.iterfind('Field'):
+            tag = xmlField.get('tag', None)
+            if tag is not None:
+                fields[tag] = xmlField.text
+        return fields
 
     def _get_link_dict(self, xmlElement):
         links = {}
@@ -252,12 +275,8 @@ class Chapter(BasicElementNotes):
             xmlElement.set('isTrash', '1')
         if self.noNumber:
             xmlElement.set('noNumber', '1')
-from calendar import day_name
-from calendar import month_name
 from datetime import date
 from datetime import time
-import gettext
-import locale
 
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
@@ -306,27 +325,6 @@ class Error(Exception):
 
 class Notification(Error):
     pass
-
-
-try:
-    LOCALE_PATH
-except NameError:
-    locale.setlocale(locale.LC_TIME, "")
-    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
-    try:
-        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
-    except:
-        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
-    try:
-        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
-        _ = t.gettext
-    except:
-
-        def _(message):
-            return message
-
-WEEKDAYS = day_name
-MONTHS = month_name
 
 
 def norm_path(path):
@@ -569,6 +567,7 @@ class Character(WorldElement):
             ET.SubElement(xmlElement, 'DeathDate').text = self.deathDate
 
 from datetime import date
+import locale
 import re
 
 
@@ -1375,6 +1374,29 @@ def get_unspecific_date(dateIso, refIso):
     refDate = date.fromisoformat(refIso)
     return str((date.fromisoformat(dateIso) - refDate).days)
 
+import calendar
+import gettext
+
+try:
+    LOCALE_PATH
+except NameError:
+    locale.setlocale(locale.LC_TIME, "")
+    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
+    try:
+        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
+    except:
+        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
+    try:
+        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
+        _ = t.gettext
+    except:
+
+        def _(message):
+            return message
+
+WEEKDAYS = calendar.day_name
+MONTHS = calendar.month_name
+
 
 ADDITIONAL_WORD_LIMITS = re.compile(r'--|—|–|\<\/p\>')
 
@@ -2031,7 +2053,7 @@ class NovxFile(File):
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 5
 
     XML_HEADER = f'''<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">
