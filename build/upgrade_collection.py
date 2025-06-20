@@ -64,7 +64,7 @@ class BasicElement:
     @title.setter
     def title(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._title != newVal:
             self._title = newVal
             self.on_element_change()
@@ -76,7 +76,7 @@ class BasicElement:
     @desc.setter
     def desc(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._desc != newVal:
             self._desc = newVal
             self.on_element_change()
@@ -94,7 +94,7 @@ class BasicElement:
             for elem in newVal:
                 val = newVal[elem]
                 if val is not None:
-                    assert type(val) == str
+                    assert type(val) is str
         if self._links != newVal:
             self._links = newVal
             self.on_element_change()
@@ -181,6 +181,7 @@ class BasicElement:
 
 
 
+
 class BasicElementNotes(BasicElement):
 
     def __init__(self,
@@ -196,7 +197,7 @@ class BasicElementNotes(BasicElement):
     @notes.setter
     def notes(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._notes != newVal:
             self._notes = newVal
             self.on_element_change()
@@ -219,12 +220,16 @@ class Chapter(BasicElementNotes):
             chType=None,
             noNumber=None,
             isTrash=None,
+            epigraph=None,
+            epigraphSrc=None,
             **kwargs):
         super().__init__(**kwargs)
         self._chLevel = chLevel
         self._chType = chType
         self._noNumber = noNumber
         self._isTrash = isTrash
+        self._epigraph = epigraph
+        self._epigraphSrc = epigraphSrc
 
     @property
     def chLevel(self):
@@ -233,7 +238,7 @@ class Chapter(BasicElementNotes):
     @chLevel.setter
     def chLevel(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._chLevel != newVal:
             self._chLevel = newVal
             self.on_element_change()
@@ -245,7 +250,7 @@ class Chapter(BasicElementNotes):
     @chType.setter
     def chType(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._chType != newVal:
             self._chType = newVal
             self.on_element_change()
@@ -257,7 +262,7 @@ class Chapter(BasicElementNotes):
     @noNumber.setter
     def noNumber(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._noNumber != newVal:
             self._noNumber = newVal
             self.on_element_change()
@@ -269,9 +274,33 @@ class Chapter(BasicElementNotes):
     @isTrash.setter
     def isTrash(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._isTrash != newVal:
             self._isTrash = newVal
+            self.on_element_change()
+
+    @property
+    def epigraph(self):
+        return self._epigraph
+
+    @epigraph.setter
+    def epigraph(self, newVal):
+        if newVal is not None:
+            assert type(newVal) is str
+        if self._epigraph != newVal:
+            self._epigraph = newVal
+            self.on_element_change()
+
+    @property
+    def epigraphSrc(self):
+        return self._epigraphSrc
+
+    @epigraphSrc.setter
+    def epigraphSrc(self, newVal):
+        if newVal is not None:
+            assert type(newVal) is str
+        if self._epigraphSrc != newVal:
+            self._epigraphSrc = newVal
             self.on_element_change()
 
     def from_xml(self, xmlElement):
@@ -288,6 +317,8 @@ class Chapter(BasicElementNotes):
             self.chLevel = 2
         self.isTrash = xmlElement.get('isTrash', None) == '1'
         self.noNumber = xmlElement.get('noNumber', None) == '1'
+        self.epigraph = self._xml_element_to_text(xmlElement.find('Epigraph'))
+        self.epigraphSrc = self._get_element_text(xmlElement, 'EpigraphSrc')
 
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
@@ -299,8 +330,220 @@ class Chapter(BasicElementNotes):
             xmlElement.set('isTrash', '1')
         if self.noNumber:
             xmlElement.set('noNumber', '1')
+        if self.epigraph:
+            xmlElement.append(self._text_to_xml_element('Epigraph', self.epigraph))
+        if self.epigraphSrc:
+            ET.SubElement(xmlElement, 'EpigraphSrc').text = self.epigraphSrc
+from calendar import isleap, day_name, month_name
 from datetime import date
+from datetime import datetime
 from datetime import time
+from datetime import timedelta
+
+import gettext
+import locale
+
+try:
+    LOCALE_PATH
+except NameError:
+    locale.setlocale(locale.LC_TIME, "")
+    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
+    try:
+        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
+    except:
+        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
+    try:
+        t = gettext.translation(
+            'novelibre',
+            LOCALE_PATH,
+            languages=[CURRENT_LANGUAGE],
+        )
+        _ = t.gettext
+    except:
+
+        def _(message):
+            return message
+
+
+
+class PyCalendar:
+
+    DATE_FORMAT = _("YYYY-MM-DD")
+    TIME_FORMAT = _("hh:mm")
+    WEEKDAYS = day_name
+    MONTHS = month_name
+    min = date.min.isoformat()
+    max = date.max.isoformat()
+
+    @classmethod
+    def age(cls, nowIso, birthDateIso, deathDateIso):
+        now = datetime.fromisoformat(nowIso)
+        if deathDateIso:
+            deathDate = datetime.fromisoformat(deathDateIso)
+            if now > deathDate:
+                yearsDead = cls._difference_in_years(deathDate, now)
+                daysDead = cls._difference_in_days(deathDate, now)
+                if birthDateIso:
+                    birthDate = datetime.fromisoformat(birthDateIso)
+                    yearsOld = cls._difference_in_years(birthDate, deathDate)
+                else:
+                    yearsOld = None
+                return yearsOld, yearsDead, None, daysDead
+
+        if birthDateIso:
+            birthDate = datetime.fromisoformat(birthDateIso)
+            yearsOld = cls._difference_in_years(birthDate, now)
+            daysOld = cls._difference_in_days(birthDate, now)
+        return yearsOld, None, daysOld, None
+
+    @classmethod
+    def duration(cls, startDateIso, startTimeIso, endDateIso, endTimeIso):
+        StartDateTime = datetime.fromisoformat(f'{startDateIso}T{startTimeIso}')
+        endDateTime = datetime.fromisoformat(f'{endDateIso}T{endTimeIso}')
+        durationTimedelta = endDateTime - StartDateTime
+        lastsHours = durationTimedelta.seconds // 3600
+        lastsMinutes = (durationTimedelta.seconds % 3600) // 60
+        if durationTimedelta.days:
+            daysStr = str(durationTimedelta.days)
+        else:
+            daysStr = None
+        if lastsHours:
+            hoursStr = str(lastsHours)
+        else:
+            hoursStr = None
+        if lastsMinutes:
+            minutesStr = str(lastsMinutes)
+        else:
+            minutesStr = None
+        return daysStr, hoursStr, minutesStr
+
+    @classmethod
+    def get_end_date_time(cls, section):
+        sectionStart = datetime.fromisoformat(f'{section.date} {section.time}')
+        sectionEnd = sectionStart + cls._get_duration(section)
+        return sectionEnd.isoformat().split('T')
+
+    @classmethod
+    def get_end_day_time(cls, section):
+        if section.day:
+            dayInt = int(section.day)
+        else:
+            dayInt = 0
+        virtualStartDate = (date.min + timedelta(days=dayInt)).isoformat()
+        virtualSectionStart = datetime.fromisoformat(f'{virtualStartDate} {section.time}')
+        virtualSectionEnd = virtualSectionStart + cls._get_duration(section)
+        virtualEndDate, endTime = virtualSectionEnd.isoformat().split('T')
+        endDay = str((date.fromisoformat(virtualEndDate) - date.min).days)
+        return (endDay, endTime)
+
+    @classmethod
+    def get_end_time(cls, section):
+        virtualSectionStart = datetime.fromisoformat(f'{cls.min} {section.time}')
+        virtualSectionEnd = virtualSectionStart + cls._get_duration(section)
+        return virtualSectionEnd.isoformat().split('T')[1]
+
+    @classmethod
+    def get_timestamp(cls, section, refIso):
+        if not section.time and not section.date and not section.day:
+            return
+
+        timeStr = section.time
+        if not timeStr:
+            timeStr = '00:00'
+        if section.date:
+            try:
+                sectionStart = datetime.fromisoformat(f'{section.date} {timeStr}')
+            except:
+                return
+        else:
+            try:
+                if section.day:
+                    dayInt = int(section.day)
+                else:
+                    dayInt = 0
+                startDate = (date.fromisoformat(refIso) + timedelta(days=dayInt)).isoformat()
+                sectionStart = datetime.fromisoformat(f'{startDate} {timeStr}')
+            except:
+                return
+
+        return int((sectionStart - datetime.min).total_seconds())
+
+    @classmethod
+    def h_m_s_str(cls, timeIso):
+        return timeIso.split(':')
+
+    @classmethod
+    def locale_date(cls, dateIso):
+        return date.fromisoformat(dateIso).strftime('%x')
+
+    @classmethod
+    def specific_date(cls, dayStr, refIso):
+        refDate = date.fromisoformat(refIso)
+        return date.isoformat(refDate + timedelta(days=int(dayStr)))
+
+    @classmethod
+    def display_time(cls, timeIso):
+        h, m, __ = cls.verified_time(timeIso).split(':')
+        return f'{h}:{m}'
+
+    @classmethod
+    def unspecific_date(cls, dateIso, refIso):
+        refDate = date.fromisoformat(refIso)
+        return str((date.fromisoformat(dateIso) - refDate).days)
+
+    @classmethod
+    def verified_date(cls, dateIso):
+        if dateIso is not None:
+            date.fromisoformat(dateIso)
+        return dateIso
+
+    @classmethod
+    def verified_time(cls, timeIso):
+        if  timeIso is not None:
+            time.fromisoformat(timeIso)
+            while timeIso.count(':') < 2:
+                timeIso = f'{timeIso}:00'
+        return timeIso
+
+    @classmethod
+    def weekday(cls, dateIso):
+        return date.fromisoformat(dateIso).weekday()
+
+    @classmethod
+    def weekday_str(cls, timestamp):
+        return (datetime.min + timedelta(seconds=timestamp)).strftime('%A')
+
+    @classmethod
+    def y_m_d_str(cls, dateIso):
+        return dateIso.split('-')
+
+    @classmethod
+    def _difference_in_years(cls, startDate, endDate):
+        diffyears = endDate.year - startDate.year
+        difference = endDate - startDate.replace(endDate.year)
+        days_in_year = isleap(endDate.year) and 366 or 365
+        years = diffyears + (difference.days + difference.seconds / 86400.0) / days_in_year
+        return int(years)
+
+    @classmethod
+    def _difference_in_days(cls, startDate, endDate):
+        return (endDate - startDate).days
+
+    @classmethod
+    def _get_duration(cls, section):
+        if section.lastsDays:
+            lastsDays = int(section.lastsDays)
+        else:
+            lastsDays = 0
+        if section.lastsHours:
+            lastsSeconds = int(section.lastsHours) * 3600
+        else:
+            lastsSeconds = 0
+        if section.lastsMinutes:
+            lastsSeconds += int(section.lastsMinutes) * 60
+        return timedelta(days=lastsDays, seconds=lastsSeconds)
+
+
 
 ROOT_PREFIX = 'rt'
 CHAPTER_PREFIX = 'ch'
@@ -319,11 +562,13 @@ IT_ROOT = f'{ROOT_PREFIX}{ITEM_PREFIX}'
 PN_ROOT = f'{ROOT_PREFIX}{PRJ_NOTE_PREFIX}'
 
 BRF_SYNOPSIS_SUFFIX = '_brf_synopsis'
+CHAPTERLIST_SUFFIX = '_chapterlist_tmp'
 CHAPTERS_SUFFIX = '_chapters_tmp'
 CHARACTER_REPORT_SUFFIX = '_character_report'
 CHARACTERS_SUFFIX = '_characters_tmp'
 CHARLIST_SUFFIX = '_charlist_tmp'
 DATA_SUFFIX = '_data'
+ELEMENT_NOTES_SUFFIX = '_element_note_report',
 GRID_SUFFIX = '_grid_tmp'
 ITEM_REPORT_SUFFIX = '_item_report'
 ITEMLIST_SUFFIX = '_itemlist_tmp'
@@ -331,7 +576,10 @@ ITEMS_SUFFIX = '_items_tmp'
 LOCATION_REPORT_SUFFIX = '_location_report'
 LOCATIONS_SUFFIX = '_locations_tmp'
 LOCLIST_SUFFIX = '_loclist_tmp'
+MAJOR_MARKER = _('Major Character')
 MANUSCRIPT_SUFFIX = '_manuscript_tmp'
+MINOR_MARKER = _('Minor Character')
+PARTLIST_SUFFIX = '_partlist_tmp'
 PARTS_SUFFIX = '_parts_tmp'
 PLOTLIST_SUFFIX = '_plotlist'
 PLOTLINES_SUFFIX = '_plotlines_tmp'
@@ -340,6 +588,7 @@ PROOF_SUFFIX = '_proof_tmp'
 SECTIONLIST_SUFFIX = '_sectionlist'
 SECTIONS_SUFFIX = '_sections_tmp'
 STAGES_SUFFIX = '_structure_tmp'
+TIMETABLE_SUFFIX = '_tt_tmp'
 XREF_SUFFIX = '_xref'
 
 
@@ -384,24 +633,10 @@ def intersection(elemList, refList):
     return [elem for elem in elemList if elem in refList]
 
 
-def verified_date(dateStr):
-    if dateStr is not None:
-        date.fromisoformat(dateStr)
-    return dateStr
-
-
 def verified_int_string(intStr):
     if intStr is not None:
         int(intStr)
     return intStr
-
-
-def verified_time(timeStr):
-    if  timeStr is not None:
-        time.fromisoformat(timeStr)
-        while timeStr.count(':') < 2:
-            timeStr = f'{timeStr}:00'
-    return timeStr
 
 
 
@@ -422,7 +657,7 @@ class BasicElementTags(BasicElementNotes):
         if newVal is not None:
             for elem in newVal:
                 if elem is not None:
-                    assert type(elem) == str
+                    assert type(elem) is str
         if self._tags != newVal:
             self._tags = newVal
             self.on_element_change()
@@ -458,7 +693,7 @@ class WorldElement(BasicElementTags):
     @aka.setter
     def aka(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._aka != newVal:
             self._aka = newVal
             self.on_element_change()
@@ -475,8 +710,6 @@ class WorldElement(BasicElementTags):
 
 
 class Character(WorldElement):
-    MAJOR_MARKER = 'Major'
-    MINOR_MARKER = 'Minor'
 
     def __init__(self,
             bio=None,
@@ -501,7 +734,7 @@ class Character(WorldElement):
     @bio.setter
     def bio(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._bio != newVal:
             self._bio = newVal
             self.on_element_change()
@@ -513,7 +746,7 @@ class Character(WorldElement):
     @goals.setter
     def goals(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._goals != newVal:
             self._goals = newVal
             self.on_element_change()
@@ -525,7 +758,7 @@ class Character(WorldElement):
     @fullName.setter
     def fullName(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._fullName != newVal:
             self._fullName = newVal
             self.on_element_change()
@@ -537,7 +770,7 @@ class Character(WorldElement):
     @isMajor.setter
     def isMajor(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._isMajor != newVal:
             self._isMajor = newVal
             self.on_element_change()
@@ -549,7 +782,7 @@ class Character(WorldElement):
     @birthDate.setter
     def birthDate(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._birthDate != newVal:
             self._birthDate = newVal
             self.on_element_change()
@@ -561,7 +794,7 @@ class Character(WorldElement):
     @deathDate.setter
     def deathDate(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._deathDate != newVal:
             self._deathDate = newVal
             self.on_element_change()
@@ -572,8 +805,8 @@ class Character(WorldElement):
         self.fullName = self._get_element_text(xmlElement, 'FullName')
         self.bio = self._xml_element_to_text(xmlElement.find('Bio'))
         self.goals = self._xml_element_to_text(xmlElement.find('Goals'))
-        self.birthDate = verified_date(self._get_element_text(xmlElement, 'BirthDate'))
-        self.deathDate = verified_date(self._get_element_text(xmlElement, 'DeathDate'))
+        self.birthDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'BirthDate'))
+        self.deathDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'DeathDate'))
 
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
@@ -590,8 +823,6 @@ class Character(WorldElement):
         if self.deathDate:
             ET.SubElement(xmlElement, 'DeathDate').text = self.deathDate
 
-from datetime import date
-import locale
 import re
 
 
@@ -664,7 +895,7 @@ class Novel(BasicElement):
         self.characters = {}
         self.projectNotes = {}
         try:
-            self.referenceWeekDay = date.fromisoformat(referenceDate).weekday()
+            self.referenceWeekDay = PyCalendar.weekday(referenceDate)
             self._referenceDate = referenceDate
         except:
             self.referenceWeekDay = None
@@ -678,7 +909,7 @@ class Novel(BasicElement):
     @authorName.setter
     def authorName(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._authorName != newVal:
             self._authorName = newVal
             self.on_element_change()
@@ -690,7 +921,7 @@ class Novel(BasicElement):
     @wordTarget.setter
     def wordTarget(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._wordTarget != newVal:
             self._wordTarget = newVal
             self.on_element_change()
@@ -702,7 +933,7 @@ class Novel(BasicElement):
     @wordCountStart.setter
     def wordCountStart(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._wordCountStart != newVal:
             self._wordCountStart = newVal
             self.on_element_change()
@@ -714,7 +945,7 @@ class Novel(BasicElement):
     @languageCode.setter
     def languageCode(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._languageCode != newVal:
             self._languageCode = newVal
             self.on_element_change()
@@ -726,7 +957,7 @@ class Novel(BasicElement):
     @countryCode.setter
     def countryCode(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._countryCode != newVal:
             self._countryCode = newVal
             self.on_element_change()
@@ -738,7 +969,7 @@ class Novel(BasicElement):
     @renumberChapters.setter
     def renumberChapters(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._renumberChapters != newVal:
             self._renumberChapters = newVal
             self.on_element_change()
@@ -750,7 +981,7 @@ class Novel(BasicElement):
     @renumberParts.setter
     def renumberParts(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._renumberParts != newVal:
             self._renumberParts = newVal
             self.on_element_change()
@@ -762,7 +993,7 @@ class Novel(BasicElement):
     @renumberWithinParts.setter
     def renumberWithinParts(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._renumberWithinParts != newVal:
             self._renumberWithinParts = newVal
             self.on_element_change()
@@ -774,7 +1005,7 @@ class Novel(BasicElement):
     @romanChapterNumbers.setter
     def romanChapterNumbers(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._romanChapterNumbers != newVal:
             self._romanChapterNumbers = newVal
             self.on_element_change()
@@ -786,7 +1017,7 @@ class Novel(BasicElement):
     @romanPartNumbers.setter
     def romanPartNumbers(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._romanPartNumbers != newVal:
             self._romanPartNumbers = newVal
             self.on_element_change()
@@ -798,7 +1029,7 @@ class Novel(BasicElement):
     @saveWordCount.setter
     def saveWordCount(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._saveWordCount != newVal:
             self._saveWordCount = newVal
             self.on_element_change()
@@ -810,7 +1041,7 @@ class Novel(BasicElement):
     @workPhase.setter
     def workPhase(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._workPhase != newVal:
             self._workPhase = newVal
             self.on_element_change()
@@ -822,7 +1053,7 @@ class Novel(BasicElement):
     @chapterHeadingPrefix.setter
     def chapterHeadingPrefix(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._chapterHeadingPrefix != newVal:
             self._chapterHeadingPrefix = newVal
             self.on_element_change()
@@ -834,7 +1065,7 @@ class Novel(BasicElement):
     @chapterHeadingSuffix.setter
     def chapterHeadingSuffix(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._chapterHeadingSuffix != newVal:
             self._chapterHeadingSuffix = newVal
             self.on_element_change()
@@ -846,7 +1077,7 @@ class Novel(BasicElement):
     @partHeadingPrefix.setter
     def partHeadingPrefix(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._partHeadingPrefix != newVal:
             self._partHeadingPrefix = newVal
             self.on_element_change()
@@ -858,7 +1089,7 @@ class Novel(BasicElement):
     @partHeadingSuffix.setter
     def partHeadingSuffix(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._partHeadingSuffix != newVal:
             self._partHeadingSuffix = newVal
             self.on_element_change()
@@ -870,7 +1101,7 @@ class Novel(BasicElement):
     @customPlotProgress.setter
     def customPlotProgress(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customPlotProgress != newVal:
             self._customPlotProgress = newVal
             self.on_element_change()
@@ -882,7 +1113,7 @@ class Novel(BasicElement):
     @customCharacterization.setter
     def customCharacterization(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customCharacterization != newVal:
             self._customCharacterization = newVal
             self.on_element_change()
@@ -894,7 +1125,7 @@ class Novel(BasicElement):
     @customWorldBuilding.setter
     def customWorldBuilding(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customWorldBuilding != newVal:
             self._customWorldBuilding = newVal
             self.on_element_change()
@@ -906,7 +1137,7 @@ class Novel(BasicElement):
     @customGoal.setter
     def customGoal(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customGoal != newVal:
             self._customGoal = newVal
             self.on_element_change()
@@ -918,7 +1149,7 @@ class Novel(BasicElement):
     @customConflict.setter
     def customConflict(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customConflict != newVal:
             self._customConflict = newVal
             self.on_element_change()
@@ -930,7 +1161,7 @@ class Novel(BasicElement):
     @customOutcome.setter
     def customOutcome(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customOutcome != newVal:
             self._customOutcome = newVal
             self.on_element_change()
@@ -942,7 +1173,7 @@ class Novel(BasicElement):
     @customChrBio.setter
     def customChrBio(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customChrBio != newVal:
             self._customChrBio = newVal
             self.on_element_change()
@@ -954,7 +1185,7 @@ class Novel(BasicElement):
     @customChrGoals.setter
     def customChrGoals(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._customChrGoals != newVal:
             self._customChrGoals = newVal
             self.on_element_change()
@@ -966,7 +1197,7 @@ class Novel(BasicElement):
     @referenceDate.setter
     def referenceDate(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._referenceDate != newVal:
             if not newVal:
                 self._referenceDate = None
@@ -974,7 +1205,7 @@ class Novel(BasicElement):
                 self.on_element_change()
             else:
                 try:
-                    self.referenceWeekDay = date.fromisoformat(newVal).weekday()
+                    self.referenceWeekDay = PyCalendar.weekday(newVal)
                 except:
                     pass
                 else:
@@ -1037,17 +1268,16 @@ class Novel(BasicElement):
 
         if xmlElement.find('WordCountStart') is not None:
             self.wordCountStart = int(xmlElement.find('WordCountStart').text)
+        else:
+            self.wordCountStart = 0
         if xmlElement.find('WordTarget') is not None:
             self.wordTarget = int(xmlElement.find('WordTarget').text)
 
-        self.referenceDate = verified_date(self._get_element_text(xmlElement, 'ReferenceDate'))
+        self.referenceDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'ReferenceDate'))
 
     def get_languages(self):
 
         def languages(text):
-            if not text:
-                return
-
             m = LANGUAGE_TAG.search(text)
             while m:
                 text = text[m.span()[1]:]
@@ -1057,12 +1287,10 @@ class Novel(BasicElement):
         self.languages = []
         for scId in self.sections:
             text = self.sections[scId].sectionContent
-            if not text:
-                continue
-
-            for language in languages(text):
-                if not language in self.languages:
-                    self.languages.append(language)
+            if text:
+                for language in languages(text):
+                    if not language in self.languages:
+                        self.languages.append(language)
 
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
@@ -1147,7 +1375,7 @@ class NvTree:
             PN_ROOT:[],
         }
         self.srtSections = {}
-        self.srtTurningPoints = {}
+        self.srtPlotPoints = {}
 
     def append(self, parent, iid):
         if parent in self.roots:
@@ -1155,7 +1383,7 @@ class NvTree:
             if parent == CH_ROOT:
                 self.srtSections[iid] = []
             elif parent == PL_ROOT:
-                self.srtTurningPoints[iid] = []
+                self.srtPlotPoints[iid] = []
             return
 
         if parent.startswith(CHAPTER_PREFIX):
@@ -1166,10 +1394,10 @@ class NvTree:
             return
 
         if parent.startswith(PLOT_LINE_PREFIX):
-            if parent in self.srtTurningPoints:
-                self.srtTurningPoints[parent].append(iid)
+            if parent in self.srtPlotPoints:
+                self.srtPlotPoints[parent].append(iid)
             else:
-                self.srtTurningPoints[parent] = [iid]
+                self.srtPlotPoints[parent] = [iid]
 
     def delete(self, *items):
         raise NotImplementedError
@@ -1178,11 +1406,11 @@ class NvTree:
         if parent in self.roots:
             self.roots[parent] = []
             if parent == CH_ROOT:
-                self.srtSections = {}
+                self.srtSections.clear()
                 return
 
             if parent == PL_ROOT:
-                self.srtTurningPoints = {}
+                self.srtPlotPoints.clear()
             return
 
         if parent.startswith(CHAPTER_PREFIX):
@@ -1190,7 +1418,7 @@ class NvTree:
             return
 
         if parent.startswith(PLOT_LINE_PREFIX):
-            self.srtTurningPoints[parent] = []
+            self.srtPlotPoints[parent] = []
 
     def get_children(self, item):
         if item in self.roots:
@@ -1200,7 +1428,7 @@ class NvTree:
             return self.srtSections.get(item, [])
 
         if item.startswith(PLOT_LINE_PREFIX):
-            return self.srtTurningPoints.get(item, [])
+            return self.srtPlotPoints.get(item, [])
 
     def index(self, item):
         raise NotImplementedError
@@ -1211,7 +1439,7 @@ class NvTree:
             if parent == CH_ROOT:
                 self.srtSections[iid] = []
             elif parent == PL_ROOT:
-                self.srtTurningPoints[iid] = []
+                self.srtPlotPoints[iid] = []
             return
 
         if parent.startswith(CHAPTER_PREFIX):
@@ -1222,10 +1450,10 @@ class NvTree:
             return
 
         if parent.startswith(PLOT_LINE_PREFIX):
-            if parent in self.srtTurningPoints:
-                self.srtTurningPoints[parent].insert(index, iid)
+            if parent in self.srtPlotPoints:
+                self.srtPlotPoints[parent].insert(index, iid)
             else:
-                self.srtTurningPoints[parent] = [iid]
+                self.srtPlotPoints[parent] = [iid]
 
     def move(self, item, parent, index):
         raise NotImplementedError
@@ -1234,7 +1462,25 @@ class NvTree:
         raise NotImplementedError
 
     def parent(self, item):
-        raise NotImplementedError
+        if item.startswith(PLOT_POINT_PREFIX):
+            for plId, ppIds in self.srtPlotPoints.items():
+                if item in ppIds:
+                    return plId
+
+        elif item.startswith(SECTION_PREFIX):
+            for chId, scIds in self.srtSections.items():
+                if item in scIds:
+                    return chId
+
+        elif item in self.roots:
+            return ''
+
+        else:
+            for root in self.roots:
+                if item in root:
+                    return root
+
+        raise KeyError
 
     def prev(self, item):
         raise NotImplementedError
@@ -1242,18 +1488,18 @@ class NvTree:
     def reset(self):
         for item in self.roots:
             self.roots[item] = []
-        self.srtSections = {}
-        self.srtTurningPoints = {}
+        self.srtSections.clear()
+        self.srtPlotPoints.clear()
 
     def set_children(self, item, newchildren):
         if item in self.roots:
             self.roots[item] = newchildren[:]
             if item == CH_ROOT:
-                self.srtSections = {}
+                self.srtSections.clear()
                 return
 
             if item == PL_ROOT:
-                self.srtTurningPoints = {}
+                self.srtPlotPoints.clear()
             return
 
         if item.startswith(CHAPTER_PREFIX):
@@ -1261,7 +1507,7 @@ class NvTree:
             return
 
         if item.startswith(PLOT_LINE_PREFIX):
-            self.srtTurningPoints[item] = newchildren[:]
+            self.srtPlotPoints[item] = newchildren[:]
 
 
 
@@ -1283,7 +1529,7 @@ class PlotLine(BasicElementNotes):
     @shortName.setter
     def shortName(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._shortName != newVal:
             self._shortName = newVal
             self.on_element_change()
@@ -1300,7 +1546,7 @@ class PlotLine(BasicElementNotes):
         if newVal is not None:
             for elem in newVal:
                 if elem is not None:
-                    assert type(elem) == str
+                    assert type(elem) is str
         if self._sections != newVal:
             self._sections = newVal
             self.on_element_change()
@@ -1342,7 +1588,7 @@ class PlotPoint(BasicElementNotes):
     @sectionAssoc.setter
     def sectionAssoc(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._sectionAssoc != newVal:
             self._sectionAssoc = newVal
             self.on_element_change()
@@ -1357,74 +1603,13 @@ class PlotPoint(BasicElementNotes):
         super().to_xml(xmlElement)
         if self.sectionAssoc:
             ET.SubElement(xmlElement, 'Section', attrib={'id': self.sectionAssoc})
-from datetime import date
-from datetime import datetime
-from datetime import time
-from datetime import timedelta
-
-from calendar import isleap
-from datetime import date
-from datetime import datetime
-from datetime import timedelta
-
-
-def difference_in_years(startDate, endDate):
-    diffyears = endDate.year - startDate.year
-    difference = endDate - startDate.replace(endDate.year)
-    days_in_year = isleap(endDate.year) and 366 or 365
-    years = diffyears + (difference.days + difference.seconds / 86400.0) / days_in_year
-    return int(years)
-
-
-def get_age(nowIso, birthDateIso, deathDateIso):
-    now = datetime.fromisoformat(nowIso)
-    if deathDateIso:
-        deathDate = datetime.fromisoformat(deathDateIso)
-        if now > deathDate:
-            years = difference_in_years(deathDate, now)
-            return -1 * years
-
-    birthDate = datetime.fromisoformat(birthDateIso)
-    years = difference_in_years(birthDate, now)
-    return years
-
-
-def get_specific_date(dayStr, refIso):
-    refDate = date.fromisoformat(refIso)
-    return date.isoformat(refDate + timedelta(days=int(dayStr)))
-
-
-def get_unspecific_date(dateIso, refIso):
-    refDate = date.fromisoformat(refIso)
-    return str((date.fromisoformat(dateIso) - refDate).days)
-
-import calendar
-import gettext
-
-try:
-    LOCALE_PATH
-except NameError:
-    locale.setlocale(locale.LC_TIME, "")
-    LOCALE_PATH = f'{os.path.dirname(sys.argv[0])}/locale/'
-    try:
-        CURRENT_LANGUAGE = locale.getlocale()[0][:2]
-    except:
-        CURRENT_LANGUAGE = locale.getdefaultlocale()[0][:2]
-    try:
-        t = gettext.translation('novelibre', LOCALE_PATH, languages=[CURRENT_LANGUAGE])
-        _ = t.gettext
-    except:
-
-        def _(message):
-            return message
-
-WEEKDAYS = calendar.day_name
-MONTHS = calendar.month_name
 
 
 ADDITIONAL_WORD_LIMITS = re.compile(r'--|—|–|\<\/p\>')
 
-NO_WORD_LIMITS = re.compile(r'\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>')
+NO_WORD_LIMITS = re.compile(
+    r'\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>'
+)
 
 
 class Section(BasicElementTags):
@@ -1448,6 +1633,7 @@ class Section(BasicElementTags):
             scene=None,
             status=None,
             appendToPrev=None,
+            viewpoint=None,
             goal=None,
             conflict=None,
             outcome=None,
@@ -1475,9 +1661,8 @@ class Section(BasicElementTags):
         self._outcome = outcome
         self._plotlineNotes = plotNotes
         try:
-            newDate = date.fromisoformat(scDate)
-            self._weekDay = newDate.weekday()
-            self._localeDate = newDate.strftime('%x')
+            self._weekDay = PyCalendar.weekday(scDate)
+            self._localeDate = PyCalendar.locale_date(scDate)
             self._date = scDate
         except:
             self._weekDay = None
@@ -1488,6 +1673,7 @@ class Section(BasicElementTags):
         self._lastsMinutes = lastsMinutes
         self._lastsHours = lastsHours
         self._lastsDays = lastsDays
+        self._viewpoint = viewpoint
         self._characters = characters
         self._locations = locations
         self._items = items
@@ -1502,7 +1688,7 @@ class Section(BasicElementTags):
     @sectionContent.setter
     def sectionContent(self, text):
         if text is not None:
-            assert type(text) == str
+            assert type(text) is str
         if self._sectionContent != text:
             self._sectionContent = text
             if text is not None:
@@ -1521,7 +1707,7 @@ class Section(BasicElementTags):
     @scType.setter
     def scType(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._scType != newVal:
             self._scType = newVal
             self.on_element_change()
@@ -1533,7 +1719,7 @@ class Section(BasicElementTags):
     @scene.setter
     def scene(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._scene != newVal:
             self._scene = newVal
             self.on_element_change()
@@ -1545,7 +1731,7 @@ class Section(BasicElementTags):
     @status.setter
     def status(self, newVal):
         if newVal is not None:
-            assert type(newVal) == int
+            assert type(newVal) is int
         if self._status != newVal:
             self._status = newVal
             self.on_element_change()
@@ -1557,7 +1743,7 @@ class Section(BasicElementTags):
     @appendToPrev.setter
     def appendToPrev(self, newVal):
         if newVal is not None:
-            assert type(newVal) == bool
+            assert type(newVal) is bool
         if self._appendToPrev != newVal:
             self._appendToPrev = newVal
             self.on_element_change()
@@ -1569,7 +1755,7 @@ class Section(BasicElementTags):
     @goal.setter
     def goal(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._goal != newVal:
             self._goal = newVal
             self.on_element_change()
@@ -1581,7 +1767,7 @@ class Section(BasicElementTags):
     @conflict.setter
     def conflict(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._conflict != newVal:
             self._conflict = newVal
             self.on_element_change()
@@ -1593,7 +1779,7 @@ class Section(BasicElementTags):
     @outcome.setter
     def outcome(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._outcome != newVal:
             self._outcome = newVal
             self.on_element_change()
@@ -1611,7 +1797,7 @@ class Section(BasicElementTags):
             for elem in newVal:
                 val = newVal[elem]
                 if val is not None:
-                    assert type(val) == str
+                    assert type(val) is str
         if self._plotlineNotes != newVal:
             self._plotlineNotes = newVal
             self.on_element_change()
@@ -1623,7 +1809,7 @@ class Section(BasicElementTags):
     @date.setter
     def date(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._date != newVal:
             if not newVal:
                 self._date = None
@@ -1633,13 +1819,12 @@ class Section(BasicElementTags):
                 return
 
             try:
-                newDate = date.fromisoformat(newVal)
-                self._weekDay = newDate.weekday()
+                self._weekDay = PyCalendar.weekday(newVal)
             except:
                 return
 
             try:
-                self._localeDate = newDate.strftime('%x')
+                self._localeDate = PyCalendar.locale_date(newVal)
             except:
                 self._localeDate = newVal
             self._date = newVal
@@ -1660,7 +1845,7 @@ class Section(BasicElementTags):
     @time.setter
     def time(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._time != newVal:
             self._time = newVal
             self.on_element_change()
@@ -1672,7 +1857,7 @@ class Section(BasicElementTags):
     @day.setter
     def day(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._day != newVal:
             self._day = newVal
             self.on_element_change()
@@ -1684,7 +1869,7 @@ class Section(BasicElementTags):
     @lastsMinutes.setter
     def lastsMinutes(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._lastsMinutes != newVal:
             self._lastsMinutes = newVal
             self.on_element_change()
@@ -1696,7 +1881,7 @@ class Section(BasicElementTags):
     @lastsHours.setter
     def lastsHours(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._lastsHours != newVal:
             self._lastsHours = newVal
             self.on_element_change()
@@ -1708,9 +1893,21 @@ class Section(BasicElementTags):
     @lastsDays.setter
     def lastsDays(self, newVal):
         if newVal is not None:
-            assert type(newVal) == str
+            assert type(newVal) is str
         if self._lastsDays != newVal:
             self._lastsDays = newVal
+            self.on_element_change()
+
+    @property
+    def viewpoint(self):
+        return self._viewpoint
+
+    @viewpoint.setter
+    def viewpoint(self, newVal):
+        if newVal is not None:
+            assert type(newVal) is str
+        if self._viewpoint != newVal:
+            self._viewpoint = newVal
             self.on_element_change()
 
     @property
@@ -1725,7 +1922,7 @@ class Section(BasicElementTags):
         if newVal is not None:
             for elem in newVal:
                 if elem is not None:
-                    assert type(elem) == str
+                    assert type(elem) is str
         if self._characters != newVal:
             self._characters = newVal
             self.on_element_change()
@@ -1742,7 +1939,7 @@ class Section(BasicElementTags):
         if newVal is not None:
             for elem in newVal:
                 if elem is not None:
-                    assert type(elem) == str
+                    assert type(elem) is str
         if self._locations != newVal:
             self._locations = newVal
             self.on_element_change()
@@ -1759,7 +1956,7 @@ class Section(BasicElementTags):
         if newVal is not None:
             for elem in newVal:
                 if elem is not None:
-                    assert type(elem) == str
+                    assert type(elem) is str
         if self._items != newVal:
             self._items = newVal
             self.on_element_change()
@@ -1769,7 +1966,7 @@ class Section(BasicElementTags):
             return True
 
         try:
-            self.date = get_specific_date(self._day, referenceDate)
+            self.date = PyCalendar.specific_date(self._day, referenceDate)
             self._day = None
             return True
 
@@ -1782,7 +1979,7 @@ class Section(BasicElementTags):
             return True
 
         try:
-            self._day = get_unspecific_date(self._date, referenceDate)
+            self._day = PyCalendar.unspecific_date(self._date, referenceDate)
             self.date = None
             return True
 
@@ -1816,6 +2013,10 @@ class Section(BasicElementTags):
 
         self.appendToPrev = xmlElement.get('append', None) == '1'
 
+        xmlViewpoint = xmlElement.find('Viewpoint')
+        if xmlViewpoint is not None:
+            self.viewpoint = xmlViewpoint.get('id', None)
+
         self.goal = self._xml_element_to_text(xmlElement.find('Goal'))
         self.conflict = self._xml_element_to_text(xmlElement.find('Conflict'))
         self.outcome = self._xml_element_to_text(xmlElement.find('Outcome'))
@@ -1830,16 +2031,22 @@ class Section(BasicElementTags):
         self.plotlineNotes = plotNotes
 
         if xmlElement.find('Date') is not None:
-            self.date = verified_date(xmlElement.find('Date').text)
+            self.date = PyCalendar.verified_date(xmlElement.find('Date').text)
         elif xmlElement.find('Day') is not None:
             self.day = verified_int_string(xmlElement.find('Day').text)
 
         if xmlElement.find('Time') is not None:
-            self.time = verified_time(xmlElement.find('Time').text)
+            self.time = PyCalendar.verified_time(xmlElement.find('Time').text)
 
-        self.lastsDays = verified_int_string(self._get_element_text(xmlElement, 'LastsDays'))
-        self.lastsHours = verified_int_string(self._get_element_text(xmlElement, 'LastsHours'))
-        self.lastsMinutes = verified_int_string(self._get_element_text(xmlElement, 'LastsMinutes'))
+        self.lastsDays = verified_int_string(
+            self._get_element_text(xmlElement, 'LastsDays')
+        )
+        self.lastsHours = verified_int_string(
+            self._get_element_text(xmlElement, 'LastsHours')
+        )
+        self.lastsMinutes = verified_int_string(
+            self._get_element_text(xmlElement, 'LastsMinutes')
+        )
 
         scCharacters = []
         xmlCharacters = xmlElement.find('Characters')
@@ -1893,39 +2100,19 @@ class Section(BasicElementTags):
         endDate = None
         endTime = None
         endDay = None
-        if self.lastsDays:
-            lastsDays = int(self.lastsDays)
-        else:
-            lastsDays = 0
-        if self.lastsHours:
-            lastsSeconds = int(self.lastsHours) * 3600
-        else:
-            lastsSeconds = 0
-        if self.lastsMinutes:
-            lastsSeconds += int(self.lastsMinutes) * 60
-        sectionDuration = timedelta(days=lastsDays, seconds=lastsSeconds)
         if self.time:
             if self.date:
                 try:
-                    sectionStart = datetime.fromisoformat(f'{self.date} {self.time}')
-                    sectionEnd = sectionStart + sectionDuration
-                    endDate, endTime = sectionEnd.isoformat().split('T')
+                    endDate, endTime = PyCalendar.get_end_date_time(self)
+                except:
+                    pass
+            elif self.day:
+                try:
+                    endDay, endTime = PyCalendar.get_end_day_time(self)
                 except:
                     pass
             else:
-                try:
-                    if self.day:
-                        dayInt = int(self.day)
-                    else:
-                        dayInt = 0
-                    startDate = (date.min + timedelta(days=dayInt)).isoformat()
-                    sectionStart = datetime.fromisoformat(f'{startDate} {self.time}')
-                    sectionEnd = sectionStart + sectionDuration
-                    endDate, endTime = sectionEnd.isoformat().split('T')
-                    endDay = str((date.fromisoformat(endDate) - date.min).days)
-                    endDate = None
-                except:
-                    pass
+                endTime = PyCalendar.get_end_time(self)
         return endDate, endTime, endDay
 
     def to_xml(self, xmlElement):
@@ -1939,12 +2126,25 @@ class Section(BasicElementTags):
         if self.appendToPrev:
             xmlElement.set('append', '1')
 
+        if self.viewpoint:
+            ET.SubElement(
+                xmlElement,
+                'Viewpoint',
+                attrib={'id':self.viewpoint},
+            )
+
         if self.goal:
-            xmlElement.append(self._text_to_xml_element('Goal', self.goal))
+            xmlElement.append(
+                self._text_to_xml_element('Goal', self.goal)
+            )
         if self.conflict:
-            xmlElement.append(self._text_to_xml_element('Conflict', self.conflict))
+            xmlElement.append(
+                self._text_to_xml_element('Conflict', self.conflict)
+            )
         if self.outcome:
-            xmlElement.append(self._text_to_xml_element('Outcome', self.outcome))
+            xmlElement.append(
+                self._text_to_xml_element('Outcome', self.outcome)
+            )
 
         if self.plotlineNotes:
             for plId in self.plotlineNotes:
@@ -1954,7 +2154,9 @@ class Section(BasicElementTags):
                 if not self.plotlineNotes[plId]:
                     continue
 
-                xmlPlotlineNotes = self._text_to_xml_element('PlotlineNotes', self.plotlineNotes[plId])
+                xmlPlotlineNotes = self._text_to_xml_element(
+                    'PlotlineNotes', self.plotlineNotes[plId]
+                )
                 xmlPlotlineNotes.set('id', plId)
                 xmlElement.append(xmlPlotlineNotes)
 
@@ -1973,22 +2175,131 @@ class Section(BasicElementTags):
             ET.SubElement(xmlElement, 'LastsMinutes').text = self.lastsMinutes
 
         if self.characters:
-            attrib = {'ids':' '.join(self.characters)}
-            ET.SubElement(xmlElement, 'Characters', attrib=attrib)
+            ET.SubElement(
+                xmlElement,
+                'Characters',
+                attrib={'ids':' '.join(self.characters)},
+            )
 
         if self.locations:
-            attrib = {'ids':' '.join(self.locations)}
-            ET.SubElement(xmlElement, 'Locations', attrib=attrib)
+            ET.SubElement(
+                xmlElement,
+                'Locations',
+                attrib={'ids':' '.join(self.locations)},
+            )
 
         if self.items:
-            attrib = {'ids':' '.join(self.items)}
-            ET.SubElement(xmlElement, 'Items', attrib=attrib)
+            ET.SubElement(
+                xmlElement,
+                'Items',
+                attrib={'ids':' '.join(self.items)},
+            )
 
         sectionContent = self.sectionContent
         if sectionContent:
             if not sectionContent in ('<p></p>', '<p />'):
-                xmlElement.append(ET.fromstring(f'<Content>{sectionContent}</Content>'))
+                xmlElement.append(
+                    ET.fromstring(f'<Content>{sectionContent}</Content>')
+                )
 from datetime import date
+
+
+
+class NovxOpener:
+
+    @classmethod
+    def get_xml_root(cls, filePath, majorVersion, minorVersion):
+        try:
+            xmlTree = ET.parse(filePath)
+        except Exception as ex:
+            raise Error(
+                f'{_("Cannot process file")}: "{norm_path(filePath)}" - {str(ex)}'
+            )
+
+        xmlRoot = xmlTree.getroot()
+        if xmlRoot.tag != 'novx':
+            msg = _("No valid xml root element found in file")
+            raise Error(f'{msg}: "{norm_path(filePath)}".')
+
+        fileMajorVersion, fileMinorVersion = cls._get_file_version(
+            xmlRoot,
+            filePath,
+        )
+        fileMajorVersion, fileMinorVersion = cls._upgrade_file_version(
+            xmlRoot,
+            fileMajorVersion,
+            fileMinorVersion,
+        )
+        cls._check_version(
+            fileMajorVersion,
+            fileMinorVersion,
+            filePath,
+            majorVersion,
+            minorVersion,
+        )
+        return xmlRoot
+
+    @classmethod
+    def _check_version(
+            cls,
+            fileMajorVersion,
+            fileMinorVersion,
+            filePath,
+            majorVersion,
+            minorVersion,
+    ):
+        if fileMajorVersion > majorVersion:
+            msg = _('The project "{}" was created with a newer novelibre version.')
+            raise Error(msg.format(norm_path(filePath)))
+
+        if fileMajorVersion < majorVersion:
+            msg = _('The project "{}" was created with an outdated novelibre version.')
+            raise Error(msg.format(norm_path(filePath)))
+
+        if fileMinorVersion > minorVersion:
+            msg = _('The project "{}" was created with a newer novelibre version.')
+            raise Error(msg.format(norm_path(filePath)))
+
+    @classmethod
+    def _upgrade_file_version(
+            cls,
+            xmlRoot,
+            fileMajorVersion,
+            fileMinorVersion,
+    ):
+        if fileMajorVersion == 1 and fileMinorVersion < 7:
+            cls._upgrade_to_1_7(xmlRoot)
+            fileMinorVersion = 7
+        return fileMajorVersion, fileMinorVersion
+
+    @classmethod
+    def _get_file_version(cls, xmlRoot, filePath):
+        try:
+            (
+                fileMajorVersionStr,
+                fileMinorVersionStr
+            ) = xmlRoot.attrib['version'].split('.')
+            fileMajorVersion = int(fileMajorVersionStr)
+            fileMinorVersion = int(fileMinorVersionStr)
+        except (KeyError, ValueError):
+            msg = _("No valid version found in file")
+            raise Error(msg.format(norm_path(filePath)))
+
+        return fileMajorVersion, fileMinorVersion
+
+    @classmethod
+    def _upgrade_to_1_7(cls, xmlRoot):
+        for xmlSection in xmlRoot.iter('SECTION'):
+            xmlCharacters = xmlSection.find('Characters')
+            if xmlCharacters is not None:
+                crIds = xmlCharacters.get('ids', None)
+                if crIds is not None:
+                    crId = crIds.split(' ')[0]
+                    ET.SubElement(
+                        xmlSection,
+                        'Viewpoint',
+                        attrib={'id':crId},
+                    )
 
 from abc import ABC
 from urllib.parse import quote
@@ -2044,26 +2355,19 @@ def strip_illegal_characters(text):
 
 
 
-def get_xml_root(filePath):
-    try:
-        xmlTree = ET.parse(filePath)
-    except Exception as ex:
-        raise Error(f'{_("Cannot process file")}: "{norm_path(filePath)}" - {str(ex)}')
-
-    return xmlTree.getroot()
-
-
 class NovxFile(File):
     DESCRIPTION = _('novelibre project')
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
-    MINOR_VERSION = 5
+    MINOR_VERSION = 7
 
     XML_HEADER = f'''<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">
 <?xml-stylesheet href="novx.css" type="text/css"?>
 '''
+
+    fileOpener = NovxOpener
 
     def __init__(self, filePath, **kwargs):
         super().__init__(filePath)
@@ -2084,7 +2388,8 @@ class NovxFile(File):
             elif partType != 0 and not self.novel.chapters[chId].isTrash:
                 self.novel.chapters[chId].chType = partType
             for scId in self.novel.tree.get_children(chId):
-                if self.novel.sections[scId].scType < self.novel.chapters[chId].chType:
+                if (self.novel.sections[scId].scType
+                        < self.novel.chapters[chId].chType):
                     self.novel.sections[scId].scType = self.novel.chapters[chId].chType
 
     def count_words(self):
@@ -2100,16 +2405,21 @@ class NovxFile(File):
         return count, totalCount
 
     def read(self):
-        xmlRoot = get_xml_root(self.filePath)
-        self._check_version(xmlRoot)
+
+        xmlRoot = self.fileOpener.get_xml_root(
+            self.filePath,
+            self.MAJOR_VERSION,
+            self.MINOR_VERSION,
+        )
         try:
             locale = xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
-            self.novel.languageCode, self.novel.countryCode = locale.split('-')
-        except:
+        except KeyError:
             pass
+        else:
+            self.novel.languageCode, self.novel.countryCode = locale.split('-')
         self.novel.tree.reset()
         try:
-            self._read_project(xmlRoot)
+            self._read_project_data(xmlRoot)
             self._read_locations(xmlRoot)
             self._read_items(xmlRoot)
             self._read_characters(xmlRoot)
@@ -2129,8 +2439,8 @@ class NovxFile(File):
         self.novel.get_languages()
 
         attrib = {
-            'version':f'{self.MAJOR_VERSION}.{self.MINOR_VERSION}',
-            'xml:lang':f'{self.novel.languageCode}-{self.novel.countryCode}',
+            'version': f'{self.MAJOR_VERSION}.{self.MINOR_VERSION}',
+            'xml:lang': f'{self.novel.languageCode}-{self.novel.countryCode}',
         }
         xmlRoot = ET.Element('novx', attrib=attrib)
         self._build_project(xmlRoot)
@@ -2156,38 +2466,46 @@ class NovxFile(File):
     def _build_chapters_and_sections(self, root):
         xmlChapters = ET.SubElement(root, 'CHAPTERS')
         for chId in self.novel.tree.get_children(CH_ROOT):
-            xmlChapter = ET.SubElement(xmlChapters, 'CHAPTER', attrib={'id':chId})
+            xmlChapter = ET.SubElement(
+                xmlChapters, 'CHAPTER', attrib={'id': chId})
             self.novel.chapters[chId].to_xml(xmlChapter)
             for scId in self.novel.tree.get_children(chId):
-                self.novel.sections[scId].to_xml(ET.SubElement(xmlChapter, 'SECTION', attrib={'id':scId}))
+                self.novel.sections[scId].to_xml(
+                    ET.SubElement(xmlChapter, 'SECTION', attrib={'id': scId}))
 
     def _build_characters(self, root):
         xmlCharacters = ET.SubElement(root, 'CHARACTERS')
         for crId in self.novel.tree.get_children(CR_ROOT):
-            self.novel.characters[crId].to_xml(ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id':crId}))
+            self.novel.characters[crId].to_xml(
+                ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id': crId}))
 
     def _build_locations(self, root):
         xmlLocations = ET.SubElement(root, 'LOCATIONS')
         for lcId in self.novel.tree.get_children(LC_ROOT):
-            self.novel.locations[lcId].to_xml(ET.SubElement(xmlLocations, 'LOCATION', attrib={'id':lcId}))
+            self.novel.locations[lcId].to_xml(
+                ET.SubElement(xmlLocations, 'LOCATION', attrib={'id': lcId}))
 
     def _build_items(self, root):
         xmlItems = ET.SubElement(root, 'ITEMS')
         for itId in self.novel.tree.get_children(IT_ROOT):
-            self.novel.items[itId].to_xml(ET.SubElement(xmlItems, 'ITEM', attrib={'id':itId}))
+            self.novel.items[itId].to_xml(
+                ET.SubElement(xmlItems, 'ITEM', attrib={'id': itId}))
 
     def _build_plot_lines_and_points(self, root):
         xmlPlotLines = ET.SubElement(root, 'ARCS')
         for plId in self.novel.tree.get_children(PL_ROOT):
-            xmlPlotLine = ET.SubElement(xmlPlotLines, 'ARC', attrib={'id':plId})
+            xmlPlotLine = ET.SubElement(
+                xmlPlotLines, 'ARC', attrib={'id': plId})
             self.novel.plotLines[plId].to_xml(xmlPlotLine)
             for ppId in self.novel.tree.get_children(plId):
-                self.novel.plotPoints[ppId].to_xml(ET.SubElement(xmlPlotLine, 'POINT', attrib={'id':ppId}))
+                self.novel.plotPoints[ppId].to_xml(
+                    ET.SubElement(xmlPlotLine, 'POINT', attrib={'id': ppId}))
 
     def _build_project_notes(self, root):
         xmlProjectNotes = ET.SubElement(root, 'PROJECTNOTES')
         for pnId in self.novel.tree.get_children(PN_ROOT):
-            self.novel.projectNotes[pnId].to_xml(ET.SubElement(xmlProjectNotes, 'PROJECTNOTE', attrib={'id':pnId}))
+            self.novel.projectNotes[pnId].to_xml(ET.SubElement(
+                xmlProjectNotes, 'PROJECTNOTE', attrib={'id': pnId}))
 
     def _build_word_count_log(self, root):
         if not self.wcLog:
@@ -2197,44 +2515,30 @@ class NovxFile(File):
         wcLastCount = None
         wcLastTotalCount = None
         for wc in self.wcLog:
+            wcCount, wcTotalCount = self.wcLog[wc]
             if self.novel.saveWordCount:
-                if self.wcLog[wc][0] == wcLastCount and self.wcLog[wc][1] == wcLastTotalCount:
+                if wcCount == wcLastCount and wcTotalCount == wcLastTotalCount:
                     continue
 
-                wcLastCount = self.wcLog[wc][0]
-                wcLastTotalCount = self.wcLog[wc][1]
+                wcLastCount = wcCount
+                wcLastTotalCount = wcTotalCount
             xmlWc = ET.SubElement(xmlWcLog, 'WC')
             ET.SubElement(xmlWc, 'Date').text = wc
-            ET.SubElement(xmlWc, 'Count').text = self.wcLog[wc][0]
-            ET.SubElement(xmlWc, 'WithUnused').text = self.wcLog[wc][1]
+            ET.SubElement(xmlWc, 'Count').text = wcCount
+            ET.SubElement(xmlWc, 'WithUnused').text = wcTotalCount
 
     def _check_id(self, elemId, elemPrefix):
         if not elemId.startswith(elemPrefix):
             raise Error(f"bad ID: '{elemId}'")
 
-    def _check_version(self, xmlRoot):
-        if xmlRoot.tag != 'novx':
-            raise Error(f'{_("No valid xml root element found in file")}: "{norm_path(self.filePath)}".')
-        try:
-            majorVersionStr, minorVersionStr = xmlRoot.attrib['version'].split('.')
-            majorVersion = int(majorVersionStr)
-            minorVersion = int(minorVersionStr)
-        except:
-            raise Error(f'{_("No valid version found in file")}: "{norm_path(self.filePath)}".')
-        if majorVersion > self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer novelibre version.').format(norm_path(self.filePath)))
-        elif majorVersion < self.MAJOR_VERSION:
-            raise Error(_('The project "{}" was created with an outdated novelibre version.').format(norm_path(self.filePath)))
-        elif minorVersion > self.MINOR_VERSION:
-            raise Error(_('The project "{}" was created with a newer novelibre version.').format(norm_path(self.filePath)))
-
     def _get_timestamp(self):
         try:
             self.timestamp = os.path.getmtime(self.filePath)
-        except:
+        except Exception:
             self.timestamp = None
 
     def _keep_word_count(self):
+
         if not self.wcLog:
             return
 
@@ -2247,19 +2551,23 @@ class NovxFile(File):
         if actualCount != latestCount or actualTotalCount != latestTotalCount:
             try:
                 fileDateIso = date.fromtimestamp(self.timestamp).isoformat()
-            except:
+            except Exception:
                 fileDateIso = date.today().isoformat()
             self.wcLogUpdate[fileDateIso] = [actualCount, actualTotalCount]
 
     def _postprocess_xml_file(self, filePath):
+
         with open(filePath, 'r', encoding='utf-8') as f:
             text = f.read()
             text = strip_illegal_characters(text)
         try:
             with open(filePath, 'w', encoding='utf-8') as f:
                 f.write(f'{self.XML_HEADER}{text}')
-        except:
-            raise Error(f'{_("Cannot write file")}: "{norm_path(filePath)}".')
+        except Exception as ex:
+            msg = _("Cannot write file")
+            msg = f'{msg}: "{norm_path(filePath)}"'
+            msg = f'{msg} - {str(ex)}'
+            raise Error(msg)
 
     def _read_chapters_and_sections(self, root):
         xmlChapters = root.find('CHAPTERS')
@@ -2269,7 +2577,8 @@ class NovxFile(File):
         for xmlChapter in xmlChapters.iterfind('CHAPTER'):
             chId = xmlChapter.attrib['id']
             self._check_id(chId, CHAPTER_PREFIX)
-            self.novel.chapters[chId] = Chapter(on_element_change=self.on_element_change)
+            self.novel.chapters[chId] = Chapter(
+                on_element_change=self.on_element_change)
             self.novel.chapters[chId].from_xml(xmlChapter)
             self.novel.tree.append(CH_ROOT, chId)
 
@@ -2287,7 +2596,8 @@ class NovxFile(File):
         for xmlCharacter in xmlCharacters.iterfind('CHARACTER'):
             crId = xmlCharacter.attrib['id']
             self._check_id(crId, CHARACTER_PREFIX)
-            self.novel.characters[crId] = Character(on_element_change=self.on_element_change)
+            self.novel.characters[crId] = Character(
+                on_element_change=self.on_element_change)
             self.novel.characters[crId].from_xml(xmlCharacter)
             self.novel.tree.append(CR_ROOT, crId)
 
@@ -2299,7 +2609,8 @@ class NovxFile(File):
         for xmlItem in xmlItems.iterfind('ITEM'):
             itId = xmlItem.attrib['id']
             self._check_id(itId, ITEM_PREFIX)
-            self.novel.items[itId] = WorldElement(on_element_change=self.on_element_change)
+            self.novel.items[itId] = WorldElement(
+                on_element_change=self.on_element_change)
             self.novel.items[itId].from_xml(xmlItem)
             self.novel.tree.append(IT_ROOT, itId)
 
@@ -2311,7 +2622,8 @@ class NovxFile(File):
         for xmlLocation in xmlLocations.iterfind('LOCATION'):
             lcId = xmlLocation.attrib['id']
             self._check_id(lcId, LOCATION_PREFIX)
-            self.novel.locations[lcId] = WorldElement(on_element_change=self.on_element_change)
+            self.novel.locations[lcId] = WorldElement(
+                on_element_change=self.on_element_change)
             self.novel.locations[lcId].from_xml(xmlLocation)
             self.novel.tree.append(LC_ROOT, lcId)
 
@@ -2323,11 +2635,13 @@ class NovxFile(File):
         for xmlPlotLine in xmlPlotLines.iterfind('ARC'):
             plId = xmlPlotLine.attrib['id']
             self._check_id(plId, PLOT_LINE_PREFIX)
-            self.novel.plotLines[plId] = PlotLine(on_element_change=self.on_element_change)
+            self.novel.plotLines[plId] = PlotLine(
+                on_element_change=self.on_element_change)
             self.novel.plotLines[plId].from_xml(xmlPlotLine)
             self.novel.tree.append(PL_ROOT, plId)
 
-            self.novel.plotLines[plId].sections = intersection(self.novel.plotLines[plId].sections, self.novel.sections)
+            self.novel.plotLines[plId].sections = intersection(
+                self.novel.plotLines[plId].sections, self.novel.sections)
 
             for scId in self.novel.plotLines[plId].sections:
                 self.novel.sections[scId].scPlotLines.append(plId)
@@ -2339,7 +2653,8 @@ class NovxFile(File):
                 self.novel.tree.append(plId, ppId)
 
     def _read_plot_point(self, xmlPlotPoint, ppId, plId):
-        self.novel.plotPoints[ppId] = PlotPoint(on_element_change=self.on_element_change)
+        self.novel.plotPoints[ppId] = PlotPoint(
+            on_element_change=self.on_element_change)
         self.novel.plotPoints[ppId].from_xml(xmlPlotPoint)
 
         scId = self.novel.plotPoints[ppId].sectionAssoc
@@ -2348,7 +2663,7 @@ class NovxFile(File):
         else:
             self.novel.plotPoints[ppId].sectionAssoc = None
 
-    def _read_project(self, root):
+    def _read_project_data(self, root):
         xmlProject = root.find('PROJECT')
         if xmlProject is None:
             return
@@ -2368,14 +2683,24 @@ class NovxFile(File):
             self.novel.tree.append(PN_ROOT, pnId)
 
     def _read_section(self, xmlSection, scId):
-        self.novel.sections[scId] = Section(on_element_change=self.on_element_change)
+        self.novel.sections[scId] = Section(
+            on_element_change=self.on_element_change)
         self.novel.sections[scId].from_xml(xmlSection)
 
-        self.novel.sections[scId].characters = intersection(self.novel.sections[scId].characters, self.novel.characters)
-        self.novel.sections[scId].locations = intersection(self.novel.sections[scId].locations, self.novel.locations)
-        self.novel.sections[scId].items = intersection(self.novel.sections[scId].items, self.novel.items)
+        self.novel.sections[scId].characters = intersection(
+            self.novel.sections[scId].characters, self.novel.characters)
+        self.novel.sections[scId].locations = intersection(
+            self.novel.sections[scId].locations, self.novel.locations)
+        self.novel.sections[scId].items = intersection(
+            self.novel.sections[scId].items, self.novel.items)
 
     def _read_word_count_log(self, xmlRoot):
+
+        def verified_date(dateStr):
+            if dateStr is not None:
+                date.fromisoformat(dateStr)
+            return dateStr
+
         xmlWclog = xmlRoot.find('PROGRESS')
         if xmlWclog is None:
             return
@@ -2388,6 +2713,7 @@ class NovxFile(File):
                 self.wcLog[wcDate] = [wcCount, wcTotalCount]
 
     def _update_word_count_log(self):
+
         if self.novel.saveWordCount:
             newCountInt, newTotalCountInt = self.count_words()
             newCount = str(newCountInt)
@@ -2396,27 +2722,98 @@ class NovxFile(File):
             self.wcLogUpdate[todayIso] = [newCount, newTotalCount]
             for wcDate in self.wcLogUpdate:
                 self.wcLog[wcDate] = self.wcLogUpdate[wcDate]
-        self.wcLogUpdate = {}
+        self.wcLogUpdate.clear()
 
     def _write_element_tree(self, xmlProject):
+
         backedUp = False
         if os.path.isfile(xmlProject.filePath):
             try:
                 os.replace(xmlProject.filePath, f'{xmlProject.filePath}.bak')
-            except:
-                raise Error(f'{_("Cannot overwrite file")}: "{norm_path(xmlProject.filePath)}".')
+            except Exception as ex:
+                raise Error(str(ex))
             else:
                 backedUp = True
         try:
-            xmlProject.xmlTree.write(xmlProject.filePath, xml_declaration=False, encoding='utf-8')
-        except:
+            xmlProject.xmlTree.write(
+                xmlProject.filePath, xml_declaration=False, encoding='utf-8')
+        except Exception as ex:
             if backedUp:
                 os.replace(f'{xmlProject.filePath}.bak', xmlProject.filePath)
-            raise Error(f'{_("Cannot write file")}: "{norm_path(xmlProject.filePath)}".')
+            msg = _("Cannot write file")
+            msg = f'{msg}: "{norm_path(xmlProject.filePath)}"'
+            msg = f'{msg} - {str(ex)}'
+            raise Error(msg)
+from pathlib import Path
+
+
+prefs = {}
+launchers = {}
+
+HOME_URL = 'https://github.com/peter88213/novelibre/'
+
+HOME_DIR = str(Path.home()).replace('\\', '/')
+INSTALL_DIR = f'{HOME_DIR}/.novx'
+PROGRAM_DIR = os.path.dirname(sys.argv[0])
+if not PROGRAM_DIR:
+    PROGRAM_DIR = '.'
+USER_STYLES_DIR = f'{INSTALL_DIR}/styles'
+USER_STYLES_XML = f'{USER_STYLES_DIR}/styles.xml'
+
+NOT_ASSIGNED = ''
+
+
+def datestr(dateIso):
+    if prefs['localize_date']:
+        return PyCalendar.locale_date(dateIso)
+    else:
+        return dateIso
+
+
+def get_locale_date_str(isoDate):
+
+    if prefs['localize_date']:
+        try:
+            localeDateStr = PyCalendar.locale_date(isoDate)
+        except Exception:
+            localeDateStr = ''
+        return localeDateStr
+
+    else:
+        return isoDate
+
+
+def get_section_date_str(section):
+    if prefs['localize_date']:
+        return section.localeDate
+    else:
+        return section.date
+
+
+def get_duration_str(section):
+
+    duration = []
+    if section.lastsDays and section.lastsDays != '0':
+        duration.append(f"{section.lastsDays}{_('d')}")
+    if section.lastsHours and section.lastsHours != '0':
+        duration.append(f"{section.lastsHours}{_('h')}")
+    if section.lastsMinutes and section.lastsMinutes != '0':
+        duration.append(f"{section.lastsMinutes}{_('min')}")
+    return list_to_string(duration, divider=' ')
+
+
+def to_string(text):
+    if text is None:
+        return ''
+
+    return str(text)
 
 
 
 class NovxService:
+
+    def get_novelibre_home_url(self):
+        return HOME_URL
 
     def get_novx_file_extension(self):
         return NovxFile.EXTENSION
