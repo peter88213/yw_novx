@@ -40,11 +40,13 @@ from nvyw7lib.yw7_file import Yw7File
 
 class BasicElement:
 
-    def __init__(self,
-            on_element_change=None,
-            title=None,
-            desc=None,
-            links=None):
+    def __init__(
+        self,
+        on_element_change=None,
+        title=None,
+        desc=None,
+        links=None
+    ):
         if on_element_change is None:
             self.on_element_change = self.do_nothing
         else:
@@ -184,9 +186,11 @@ class BasicElement:
 
 class BasicElementNotes(BasicElement):
 
-    def __init__(self,
-            notes=None,
-            **kwargs):
+    def __init__(
+        self,
+        notes=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._notes = notes
 
@@ -215,14 +219,16 @@ class BasicElementNotes(BasicElement):
 
 class Chapter(BasicElementNotes):
 
-    def __init__(self,
-            chLevel=None,
-            chType=None,
-            noNumber=None,
-            isTrash=None,
-            epigraph=None,
-            epigraphSrc=None,
-            **kwargs):
+    def __init__(
+        self,
+        chLevel=None,
+        chType=None,
+        noNumber=None,
+        isTrash=None,
+        epigraph=None,
+        epigraphSrc=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._chLevel = chLevel
         self._chType = chType
@@ -331,7 +337,9 @@ class Chapter(BasicElementNotes):
         if self.noNumber:
             xmlElement.set('noNumber', '1')
         if self.epigraph:
-            xmlElement.append(self._text_to_xml_element('Epigraph', self.epigraph))
+            xmlElement.append(
+                self._text_to_xml_element('Epigraph', self.epigraph)
+            )
         if self.epigraphSrc:
             ET.SubElement(xmlElement, 'EpigraphSrc').text = self.epigraphSrc
 from calendar import isleap, day_name, month_name
@@ -398,7 +406,9 @@ class PyCalendar:
 
     @classmethod
     def duration(cls, startDateIso, startTimeIso, endDateIso, endTimeIso):
-        StartDateTime = datetime.fromisoformat(f'{startDateIso}T{startTimeIso}')
+        StartDateTime = datetime.fromisoformat(
+            f'{startDateIso}T{startTimeIso}'
+        )
         endDateTime = datetime.fromisoformat(f'{endDateIso}T{endTimeIso}')
         durationTimedelta = endDateTime - StartDateTime
         lastsHours = durationTimedelta.seconds // 3600
@@ -419,7 +429,9 @@ class PyCalendar:
 
     @classmethod
     def get_end_date_time(cls, section):
-        sectionStart = datetime.fromisoformat(f'{section.date} {section.time}')
+        sectionStart = datetime.fromisoformat(
+            f'{section.date} {section.time}'
+        )
         sectionEnd = sectionStart + cls._get_duration(section)
         return sectionEnd.isoformat().split('T')
 
@@ -430,7 +442,9 @@ class PyCalendar:
         else:
             dayInt = 0
         virtualStartDate = (date.min + timedelta(days=dayInt)).isoformat()
-        virtualSectionStart = datetime.fromisoformat(f'{virtualStartDate} {section.time}')
+        virtualSectionStart = datetime.fromisoformat(
+            f'{virtualStartDate} {section.time}'
+        )
         virtualSectionEnd = virtualSectionStart + cls._get_duration(section)
         virtualEndDate, endTime = virtualSectionEnd.isoformat().split('T')
         endDay = str((date.fromisoformat(virtualEndDate) - date.min).days)
@@ -438,7 +452,9 @@ class PyCalendar:
 
     @classmethod
     def get_end_time(cls, section):
-        virtualSectionStart = datetime.fromisoformat(f'{cls.min} {section.time}')
+        virtualSectionStart = datetime.fromisoformat(
+            f'{cls.min} {section.time}'
+        )
         virtualSectionEnd = virtualSectionStart + cls._get_duration(section)
         return virtualSectionEnd.isoformat().split('T')[1]
 
@@ -452,7 +468,9 @@ class PyCalendar:
             timeStr = '00:00'
         if section.date:
             try:
-                sectionStart = datetime.fromisoformat(f'{section.date} {timeStr}')
+                sectionStart = datetime.fromisoformat(
+                    f'{section.date} {timeStr}'
+                )
             except:
                 return
         else:
@@ -461,7 +479,9 @@ class PyCalendar:
                     dayInt = int(section.day)
                 else:
                     dayInt = 0
-                startDate = (date.fromisoformat(refIso) + timedelta(days=dayInt)).isoformat()
+                startDate = (
+                    date.fromisoformat(refIso) + timedelta(days=dayInt)
+                ).isoformat()
                 sectionStart = datetime.fromisoformat(f'{startDate} {timeStr}')
             except:
                 return
@@ -522,7 +542,9 @@ class PyCalendar:
         diffyears = endDate.year - startDate.year
         difference = endDate - startDate.replace(endDate.year)
         days_in_year = isleap(endDate.year) and 366 or 365
-        years = diffyears + (difference.days + difference.seconds / 86400.0) / days_in_year
+        years = diffyears + (
+            difference.days + difference.seconds / 86400.0
+            ) / days_in_year
         return int(years)
 
     @classmethod
@@ -591,6 +613,26 @@ STAGES_SUFFIX = '_structure_tmp'
 TIMETABLE_SUFFIX = '_tt_tmp'
 XREF_SUFFIX = '_xref'
 
+NO_SCENE_FIELD_1_DEFAULT = _('Plot progress')
+NO_SCENE_FIELD_2_DEFAULT = _('Characterization')
+NO_SCENE_FIELD_3_DEFAULT = _('World building')
+OTHER_SCENE_FIELD_1_DEFAULT = _('Opening')
+OTHER_SCENE_FIELD_2_DEFAULT = _('Peak emotional moment')
+OTHER_SCENE_FIELD_3_DEFAULT = _('Ending')
+CR_FIELD_1_DEFAULT = _('Bio')
+CR_FIELD_2_DEFAULT = _('Goals')
+
+STATUS = [
+    None,
+    _('Outline'),
+    _('Draft'),
+    _('1st Edit'),
+    _('2nd Edit'),
+    _('Done')
+]
+
+SCENE = ['-', 'A', 'R', 'x']
+
 
 class Error(Exception):
     pass
@@ -642,9 +684,11 @@ def verified_int_string(intStr):
 
 class BasicElementTags(BasicElementNotes):
 
-    def __init__(self,
-            tags=None,
-            **kwargs):
+    def __init__(
+        self,
+        tags=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._tags = tags
 
@@ -680,9 +724,11 @@ class BasicElementTags(BasicElementNotes):
 
 class WorldElement(BasicElementTags):
 
-    def __init__(self,
-            aka=None,
-            **kwargs):
+    def __init__(
+        self,
+        aka=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._aka = aka
 
@@ -711,14 +757,16 @@ class WorldElement(BasicElementTags):
 
 class Character(WorldElement):
 
-    def __init__(self,
-            bio=None,
-            goals=None,
-            fullName=None,
-            isMajor=None,
-            birthDate=None,
-            deathDate=None,
-            **kwargs):
+    def __init__(
+        self,
+        bio=None,
+        goals=None,
+        fullName=None,
+        isMajor=None,
+        birthDate=None,
+        deathDate=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._bio = bio
         self._goals = goals
@@ -805,8 +853,12 @@ class Character(WorldElement):
         self.fullName = self._get_element_text(xmlElement, 'FullName')
         self.bio = self._xml_element_to_text(xmlElement.find('Bio'))
         self.goals = self._xml_element_to_text(xmlElement.find('Goals'))
-        self.birthDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'BirthDate'))
-        self.deathDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'DeathDate'))
+        self.birthDate = PyCalendar.verified_date(
+            self._get_element_text(xmlElement, 'BirthDate')
+        )
+        self.deathDate = PyCalendar.verified_date(
+            self._get_element_text(xmlElement, 'DeathDate')
+        )
 
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
@@ -831,34 +883,36 @@ LANGUAGE_TAG = re.compile(r'\<span xml\:lang=\"(.*?)\"\>')
 
 class Novel(BasicElement):
 
-    def __init__(self,
-            authorName=None,
-            wordTarget=None,
-            wordCountStart=None,
-            languageCode=None,
-            countryCode=None,
-            renumberChapters=None,
-            renumberParts=None,
-            renumberWithinParts=None,
-            romanChapterNumbers=None,
-            romanPartNumbers=None,
-            saveWordCount=None,
-            workPhase=None,
-            chapterHeadingPrefix=None,
-            chapterHeadingSuffix=None,
-            partHeadingPrefix=None,
-            partHeadingSuffix=None,
-            customPlotProgress=None,
-            customCharacterization=None,
-            customWorldBuilding=None,
-            customGoal=None,
-            customConflict=None,
-            customOutcome=None,
-            customChrBio=None,
-            customChrGoals=None,
-            referenceDate=None,
-            tree=None,
-            **kwargs):
+    def __init__(
+        self,
+        authorName=None,
+        wordTarget=None,
+        wordCountStart=None,
+        languageCode=None,
+        countryCode=None,
+        renumberChapters=None,
+        renumberParts=None,
+        renumberWithinParts=None,
+        romanChapterNumbers=None,
+        romanPartNumbers=None,
+        saveWordCount=None,
+        workPhase=None,
+        chapterHeadingPrefix=None,
+        chapterHeadingSuffix=None,
+        partHeadingPrefix=None,
+        partHeadingSuffix=None,
+        noSceneField1=None,
+        noSceneField2=None,
+        noSceneField3=None,
+        otherSceneField1=None,
+        otherSceneField2=None,
+        otherSceneField3=None,
+        crField1=None,
+        crField2=None,
+        referenceDate=None,
+        tree=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._authorName = authorName
         self._wordTarget = wordTarget
@@ -876,14 +930,14 @@ class Novel(BasicElement):
         self._chapterHeadingSuffix = chapterHeadingSuffix
         self._partHeadingPrefix = partHeadingPrefix
         self._partHeadingSuffix = partHeadingSuffix
-        self._customPlotProgress = customPlotProgress
-        self._customCharacterization = customCharacterization
-        self._customWorldBuilding = customWorldBuilding
-        self._customGoal = customGoal
-        self._customConflict = customConflict
-        self._customOutcome = customOutcome
-        self._customChrBio = customChrBio
-        self._customChrGoals = customChrGoals
+        self._noSceneField1 = noSceneField1
+        self._noSceneField2 = noSceneField2
+        self._noSceneField3 = noSceneField3
+        self._otherSceneField1 = otherSceneField1
+        self._otherSceneField2 = otherSceneField2
+        self._otherSceneField3 = otherSceneField3
+        self._crField1 = crField1
+        self._crField2 = crField2
 
         self.chapters = {}
         self.sections = {}
@@ -1095,99 +1149,99 @@ class Novel(BasicElement):
             self.on_element_change()
 
     @property
-    def customPlotProgress(self):
-        return self._customPlotProgress
+    def noSceneField1(self):
+        return self._noSceneField1
 
-    @customPlotProgress.setter
-    def customPlotProgress(self, newVal):
+    @noSceneField1.setter
+    def noSceneField1(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customPlotProgress != newVal:
-            self._customPlotProgress = newVal
+        if self._noSceneField1 != newVal:
+            self._noSceneField1 = newVal
             self.on_element_change()
 
     @property
-    def customCharacterization(self):
-        return self._customCharacterization
+    def noSceneField2(self):
+        return self._noSceneField2
 
-    @customCharacterization.setter
-    def customCharacterization(self, newVal):
+    @noSceneField2.setter
+    def noSceneField2(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customCharacterization != newVal:
-            self._customCharacterization = newVal
+        if self._noSceneField2 != newVal:
+            self._noSceneField2 = newVal
             self.on_element_change()
 
     @property
-    def customWorldBuilding(self):
-        return self._customWorldBuilding
+    def noSceneField3(self):
+        return self._noSceneField3
 
-    @customWorldBuilding.setter
-    def customWorldBuilding(self, newVal):
+    @noSceneField3.setter
+    def noSceneField3(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customWorldBuilding != newVal:
-            self._customWorldBuilding = newVal
+        if self._noSceneField3 != newVal:
+            self._noSceneField3 = newVal
             self.on_element_change()
 
     @property
-    def customGoal(self):
-        return self._customGoal
+    def otherSceneField1(self):
+        return self._otherSceneField1
 
-    @customGoal.setter
-    def customGoal(self, newVal):
+    @otherSceneField1.setter
+    def otherSceneField1(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customGoal != newVal:
-            self._customGoal = newVal
+        if self._otherSceneField1 != newVal:
+            self._otherSceneField1 = newVal
             self.on_element_change()
 
     @property
-    def customConflict(self):
-        return self._customConflict
+    def otherSceneField2(self):
+        return self._otherSceneField2
 
-    @customConflict.setter
-    def customConflict(self, newVal):
+    @otherSceneField2.setter
+    def otherSceneField2(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customConflict != newVal:
-            self._customConflict = newVal
+        if self._otherSceneField2 != newVal:
+            self._otherSceneField2 = newVal
             self.on_element_change()
 
     @property
-    def customOutcome(self):
-        return self._customOutcome
+    def otherSceneField3(self):
+        return self._otherSceneField3
 
-    @customOutcome.setter
-    def customOutcome(self, newVal):
+    @otherSceneField3.setter
+    def otherSceneField3(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customOutcome != newVal:
-            self._customOutcome = newVal
+        if self._otherSceneField3 != newVal:
+            self._otherSceneField3 = newVal
             self.on_element_change()
 
     @property
-    def customChrBio(self):
-        return self._customChrBio
+    def crField1(self):
+        return self._crField1
 
-    @customChrBio.setter
-    def customChrBio(self, newVal):
+    @crField1.setter
+    def crField1(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customChrBio != newVal:
-            self._customChrBio = newVal
+        if self._crField1 != newVal:
+            self._crField1 = newVal
             self.on_element_change()
 
     @property
-    def customChrGoals(self):
-        return self._customChrGoals
+    def crField2(self):
+        return self._crField2
 
-    @customChrGoals.setter
-    def customChrGoals(self, newVal):
+    @crField2.setter
+    def crField2(self, newVal):
         if newVal is not None:
             assert type(newVal) is str
-        if self._customChrGoals != newVal:
-            self._customChrGoals = newVal
+        if self._crField2 != newVal:
+            self._crField2 = newVal
             self.on_element_change()
 
     @property
@@ -1235,12 +1289,18 @@ class Novel(BasicElement):
 
     def from_xml(self, xmlElement):
         super().from_xml(xmlElement)
-        self.renumberChapters = xmlElement.get('renumberChapters', None) == '1'
-        self.renumberParts = xmlElement.get('renumberParts', None) == '1'
-        self.renumberWithinParts = xmlElement.get('renumberWithinParts', None) == '1'
-        self.romanChapterNumbers = xmlElement.get('romanChapterNumbers', None) == '1'
-        self.romanPartNumbers = xmlElement.get('romanPartNumbers', None) == '1'
-        self.saveWordCount = xmlElement.get('saveWordCount', None) == '1'
+        self.renumberChapters = xmlElement.get(
+            'renumberChapters', None) == '1'
+        self.renumberParts = xmlElement.get(
+            'renumberParts', None) == '1'
+        self.renumberWithinParts = xmlElement.get(
+            'renumberWithinParts', None) == '1'
+        self.romanChapterNumbers = xmlElement.get(
+            'romanChapterNumbers', None) == '1'
+        self.romanPartNumbers = xmlElement.get(
+            'romanPartNumbers', None) == '1'
+        self.saveWordCount = xmlElement.get(
+            'saveWordCount', None) == '1'
         workPhase = xmlElement.get('workPhase', None)
         if workPhase in ('1', '2', '3', '4', '5'):
             self.workPhase = int(workPhase)
@@ -1249,31 +1309,81 @@ class Novel(BasicElement):
 
         self.authorName = self._get_element_text(xmlElement, 'Author')
 
-        self.chapterHeadingPrefix = self._get_element_text(xmlElement, 'ChapterHeadingPrefix')
-        self.chapterHeadingSuffix = self._get_element_text(xmlElement, 'ChapterHeadingSuffix')
+        self.chapterHeadingPrefix = self._get_element_text(
+            xmlElement,
+            'ChapterHeadingPrefix'
+        )
+        self.chapterHeadingSuffix = self._get_element_text(
+            xmlElement,
+            'ChapterHeadingSuffix'
+        )
 
-        self.partHeadingPrefix = self._get_element_text(xmlElement, 'PartHeadingPrefix')
-        self.partHeadingSuffix = self._get_element_text(xmlElement, 'PartHeadingSuffix')
+        self.partHeadingPrefix = self._get_element_text(
+            xmlElement,
+            'PartHeadingPrefix'
+        )
+        self.partHeadingSuffix = self._get_element_text(
+            xmlElement,
+            'PartHeadingSuffix'
+        )
 
-        self.customPlotProgress = self._get_element_text(xmlElement, 'CustomPlotProgress')
-        self.customCharacterization = self._get_element_text(xmlElement, 'CustomCharacterization')
-        self.customWorldBuilding = self._get_element_text(xmlElement, 'CustomWorldBuilding')
+        self.noSceneField1 = self._get_element_text(
+            xmlElement,
+            'CustomPlotProgress',
+            default=self.noSceneField1,
+        )
+        self.noSceneField2 = self._get_element_text(
+            xmlElement,
+            'CustomCharacterization',
+            default=self.noSceneField2,
+        )
+        self.noSceneField3 = self._get_element_text(
+            xmlElement,
+            'CustomWorldBuilding',
+            default=self.noSceneField3,
+        )
 
-        self.customGoal = self._get_element_text(xmlElement, 'CustomGoal')
-        self.customConflict = self._get_element_text(xmlElement, 'CustomConflict')
-        self.customOutcome = self._get_element_text(xmlElement, 'CustomOutcome')
+        self.otherSceneField1 = self._get_element_text(
+            xmlElement,
+            'CustomGoal',
+            default=self.otherSceneField1,
+        )
+        self.otherSceneField2 = self._get_element_text(
+            xmlElement,
+            'CustomConflict',
+            default=self.otherSceneField2,
+        )
+        self.otherSceneField3 = self._get_element_text(
+            xmlElement,
+            'CustomOutcome',
+            default=self.otherSceneField3,
+        )
 
-        self.customChrBio = self._get_element_text(xmlElement, 'CustomChrBio')
-        self.customChrGoals = self._get_element_text(xmlElement, 'CustomChrGoals')
+        self.crField1 = self._get_element_text(
+            xmlElement,
+            'CustomChrBio',
+            default=self.crField1,
+        )
+        self.crField2 = self._get_element_text(
+            xmlElement,
+            'CustomChrGoals',
+            default=self.crField2,
+        )
 
         if xmlElement.find('WordCountStart') is not None:
-            self.wordCountStart = int(xmlElement.find('WordCountStart').text)
+            self.wordCountStart = int(
+                xmlElement.find('WordCountStart').text
+            )
         else:
             self.wordCountStart = 0
         if xmlElement.find('WordTarget') is not None:
-            self.wordTarget = int(xmlElement.find('WordTarget').text)
+            self.wordTarget = int(
+                xmlElement.find('WordTarget').text
+            )
 
-        self.referenceDate = PyCalendar.verified_date(self._get_element_text(xmlElement, 'ReferenceDate'))
+        self.referenceDate = PyCalendar.verified_date(
+            self._get_element_text(xmlElement, 'ReferenceDate')
+        )
 
     def get_languages(self):
 
@@ -1310,44 +1420,92 @@ class Novel(BasicElement):
             xmlElement.set('workPhase', str(self.workPhase))
 
         if self.authorName:
-            ET.SubElement(xmlElement, 'Author').text = self.authorName
+            ET.SubElement(
+                xmlElement,
+                'Author',
+            ).text = self.authorName
 
         if self.chapterHeadingPrefix:
-            ET.SubElement(xmlElement, 'ChapterHeadingPrefix').text = self.chapterHeadingPrefix
+            ET.SubElement(
+                xmlElement,
+                'ChapterHeadingPrefix',
+            ).text = self.chapterHeadingPrefix
         if self.chapterHeadingSuffix:
-            ET.SubElement(xmlElement, 'ChapterHeadingSuffix').text = self.chapterHeadingSuffix
+            ET.SubElement(
+                xmlElement,
+                'ChapterHeadingSuffix',
+            ).text = self.chapterHeadingSuffix
 
         if self.partHeadingPrefix:
-            ET.SubElement(xmlElement, 'PartHeadingPrefix').text = self.partHeadingPrefix
+            ET.SubElement(
+                xmlElement,
+                'PartHeadingPrefix',
+            ).text = self.partHeadingPrefix
         if self.partHeadingSuffix:
-            ET.SubElement(xmlElement, 'PartHeadingSuffix').text = self.partHeadingSuffix
+            ET.SubElement(
+                xmlElement,
+                'PartHeadingSuffix',
+            ).text = self.partHeadingSuffix
 
-        if self.customPlotProgress:
-            ET.SubElement(xmlElement, 'CustomPlotProgress').text = self.customPlotProgress
-        if self.customCharacterization:
-            ET.SubElement(xmlElement, 'CustomCharacterization').text = self.customCharacterization
-        if self.customWorldBuilding:
-            ET.SubElement(xmlElement, 'CustomWorldBuilding').text = self.customWorldBuilding
+        if self.noSceneField1:
+            ET.SubElement(
+                xmlElement,
+                'CustomPlotProgress',
+            ).text = self.noSceneField1
+        if self.noSceneField2:
+            ET.SubElement(
+                xmlElement,
+                'CustomCharacterization',
+            ).text = self.noSceneField2
+        if self.noSceneField3:
+            ET.SubElement(
+                xmlElement,
+                'CustomWorldBuilding',
+            ).text = self.noSceneField3
 
-        if self.customGoal:
-            ET.SubElement(xmlElement, 'CustomGoal').text = self.customGoal
-        if self.customConflict:
-            ET.SubElement(xmlElement, 'CustomConflict').text = self.customConflict
-        if self.customOutcome:
-            ET.SubElement(xmlElement, 'CustomOutcome').text = self.customOutcome
+        if self.otherSceneField1:
+            ET.SubElement(
+                xmlElement,
+                'CustomGoal',
+            ).text = self.otherSceneField1
+        if self.otherSceneField2:
+            ET.SubElement(
+                xmlElement,
+                'CustomConflict',
+            ).text = self.otherSceneField2
+        if self.otherSceneField3:
+            ET.SubElement(
+                xmlElement,
+                'CustomOutcome',
+            ).text = self.otherSceneField3
 
-        if self.customChrBio:
-            ET.SubElement(xmlElement, 'CustomChrBio').text = self.customChrBio
-        if self.customChrGoals:
-            ET.SubElement(xmlElement, 'CustomChrGoals').text = self.customChrGoals
+        if self.crField1:
+            ET.SubElement(
+                xmlElement,
+                'CustomChrBio',
+            ).text = self.crField1
+        if self.crField2:
+            ET.SubElement(
+                xmlElement,
+                'CustomChrGoals',
+            ).text = self.crField2
 
         if self.wordCountStart:
-            ET.SubElement(xmlElement, 'WordCountStart').text = str(self.wordCountStart)
+            ET.SubElement(
+                xmlElement,
+                'WordCountStart',
+            ).text = str(self.wordCountStart)
         if self.wordTarget:
-            ET.SubElement(xmlElement, 'WordTarget').text = str(self.wordTarget)
+            ET.SubElement(
+                xmlElement,
+                'WordTarget',
+            ).text = str(self.wordTarget)
 
         if self.referenceDate:
-            ET.SubElement(xmlElement, 'ReferenceDate').text = self.referenceDate
+            ET.SubElement(
+                xmlElement,
+                'ReferenceDate',
+            ).text = self.referenceDate
 
     def update_plot_lines(self):
         for scId in self.sections:
@@ -1513,10 +1671,12 @@ class NvTree:
 
 class PlotLine(BasicElementNotes):
 
-    def __init__(self,
-            shortName=None,
-            sections=None,
-            **kwargs):
+    def __init__(
+        self,
+        shortName=None,
+        sections=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
 
         self._shortName = shortName
@@ -1574,9 +1734,11 @@ class PlotLine(BasicElementNotes):
 
 class PlotPoint(BasicElementNotes):
 
-    def __init__(self,
-            sectionAssoc=None,
-            **kwargs):
+    def __init__(
+        self,
+        sectionAssoc=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
 
         self._sectionAssoc = sectionAssoc
@@ -1602,52 +1764,57 @@ class PlotPoint(BasicElementNotes):
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
         if self.sectionAssoc:
-            ET.SubElement(xmlElement, 'Section', attrib={'id': self.sectionAssoc})
+            ET.SubElement(
+                xmlElement,
+                'Section',
+                attrib={'id': self.sectionAssoc},
+            )
 
 
-ADDITIONAL_WORD_LIMITS = re.compile(r'--|—|–|\<\/p\>')
 
-NO_WORD_LIMITS = re.compile(
-    r'\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>'
-)
+class WordCounter:
+
+    ADDITIONAL_WORD_LIMITS = re.compile(r'--|—|–|\<\/p\>')
+
+    NO_WORD_LIMITS = re.compile(
+        r'\<note\>.*?\<\/note\>|\<comment\>.*?\<\/comment\>|\<.+?\>'
+    )
+
+    def get_word_count(self, text):
+        text = self.ADDITIONAL_WORD_LIMITS.sub(' ', text)
+        text = self.NO_WORD_LIMITS.sub('', text)
+        return len(text.split())
 
 
 class Section(BasicElementTags):
 
-    SCENE = ['-', 'A', 'R', 'x']
-
-    STATUS = [
-        None,
-        _('Outline'),
-        _('Draft'),
-        _('1st Edit'),
-        _('2nd Edit'),
-        _('Done')
-    ]
-
     NULL_DATE = '0001-01-01'
     NULL_TIME = '00:00:00'
 
-    def __init__(self,
-            scType=None,
-            scene=None,
-            status=None,
-            appendToPrev=None,
-            viewpoint=None,
-            goal=None,
-            conflict=None,
-            outcome=None,
-            plotNotes=None,
-            scDate=None,
-            scTime=None,
-            day=None,
-            lastsMinutes=None,
-            lastsHours=None,
-            lastsDays=None,
-            characters=None,
-            locations=None,
-            items=None,
-            **kwargs):
+    wordCounter = WordCounter()
+
+    def __init__(
+        self,
+        scType=None,
+        scene=None,
+        status=None,
+        appendToPrev=None,
+        viewpoint=None,
+        goal=None,
+        conflict=None,
+        outcome=None,
+        plotNotes=None,
+        scDate=None,
+        scTime=None,
+        day=None,
+        lastsMinutes=None,
+        lastsHours=None,
+        lastsDays=None,
+        characters=None,
+        locations=None,
+        items=None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self._sectionContent = None
         self.wordCount = 0
@@ -1692,10 +1859,7 @@ class Section(BasicElementTags):
         if self._sectionContent != text:
             self._sectionContent = text
             if text is not None:
-                text = ADDITIONAL_WORD_LIMITS.sub(' ', text)
-                text = NO_WORD_LIMITS.sub('', text)
-                wordList = text.split()
-                self.wordCount = len(wordList)
+                self.wordCount = self.wordCounter.get_word_count(text)
             else:
                 self.wordCount = 0
             self.on_element_change()
@@ -2203,6 +2367,55 @@ class Section(BasicElementTags):
                 )
 from datetime import date
 
+from abc import ABC
+from urllib.parse import quote
+
+
+
+class File(ABC):
+    DESCRIPTION = _('File')
+    EXTENSION = None
+    SUFFIX = None
+
+    def __init__(self, filePath, **kwargs):
+        self.novel = None
+        self._filePath = None
+        self.projectName = None
+        self.projectPath = None
+        self.sectionsSplit = False
+        self.filePath = filePath
+
+    @property
+    def filePath(self):
+        return self._filePath
+
+    @filePath.setter
+    def filePath(self, filePath: str):
+        filePath = filePath.replace('\\', '/')
+        if self.SUFFIX is not None:
+            suffix = self.SUFFIX
+        else:
+            suffix = ''
+        if filePath.lower().endswith(f'{suffix}{self.EXTENSION}'.lower()):
+            self._filePath = filePath
+            try:
+                head, tail = os.path.split(os.path.realpath(filePath))
+            except:
+                head, tail = os.path.split(filePath)
+            self.projectPath = quote(head.replace('\\', '/'), '/:')
+            self.projectName = quote(
+                tail.replace(f'{suffix}{self.EXTENSION}', '')
+            )
+
+    def is_locked(self):
+        return False
+
+    def read(self):
+        raise NotImplementedError
+
+    def write(self):
+        raise NotImplementedError
+
 
 
 class NovxOpener:
@@ -2212,8 +2425,9 @@ class NovxOpener:
         try:
             xmlTree = ET.parse(filePath)
         except Exception as ex:
+            normPath = norm_path(filePath)
             raise Error(
-                f'{_("Cannot process file")}: "{norm_path(filePath)}" - {str(ex)}'
+                f'{_("Cannot process file")}: "{normPath}" - {str(ex)}'
             )
 
         xmlRoot = xmlTree.getroot()
@@ -2301,53 +2515,6 @@ class NovxOpener:
                         attrib={'id':crId},
                     )
 
-from abc import ABC
-from urllib.parse import quote
-
-
-
-class File(ABC):
-    DESCRIPTION = _('File')
-    EXTENSION = None
-    SUFFIX = None
-
-    def __init__(self, filePath, **kwargs):
-        self.novel = None
-        self._filePath = None
-        self.projectName = None
-        self.projectPath = None
-        self.sectionsSplit = False
-        self.filePath = filePath
-
-    @property
-    def filePath(self):
-        return self._filePath
-
-    @filePath.setter
-    def filePath(self, filePath: str):
-        filePath = filePath.replace('\\', '/')
-        if self.SUFFIX is not None:
-            suffix = self.SUFFIX
-        else:
-            suffix = ''
-        if filePath.lower().endswith(f'{suffix}{self.EXTENSION}'.lower()):
-            self._filePath = filePath
-            try:
-                head, tail = os.path.split(os.path.realpath(filePath))
-            except:
-                head, tail = os.path.split(filePath)
-            self.projectPath = quote(head.replace('\\', '/'), '/:')
-            self.projectName = quote(tail.replace(f'{suffix}{self.EXTENSION}', ''))
-
-    def is_locked(self):
-        return False
-
-    def read(self):
-        raise NotImplementedError
-
-    def write(self):
-        raise NotImplementedError
-
 
 
 def strip_illegal_characters(text):
@@ -2362,10 +2529,11 @@ class NovxFile(File):
     MAJOR_VERSION = 1
     MINOR_VERSION = 7
 
-    XML_HEADER = f'''<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">
-<?xml-stylesheet href="novx.css" type="text/css"?>
-'''
+    XML_HEADER = (
+        f'<?xml version="1.0" encoding="utf-8"?>\n'
+        f'<!DOCTYPE novx SYSTEM "novx_{MAJOR_VERSION}_{MINOR_VERSION}.dtd">\n'
+        '<?xml-stylesheet href="novx.css" type="text/css"?>\n'
+    )
 
     fileOpener = NovxOpener
 
@@ -2389,8 +2557,11 @@ class NovxFile(File):
                 self.novel.chapters[chId].chType = partType
             for scId in self.novel.tree.get_children(chId):
                 if (self.novel.sections[scId].scType
-                        < self.novel.chapters[chId].chType):
-                    self.novel.sections[scId].scType = self.novel.chapters[chId].chType
+                        < self.novel.chapters[chId].chType
+                ):
+                    self.novel.sections[scId].scType = (
+                        self.novel.chapters[chId].chType
+                    )
 
     def count_words(self):
         count = 0
@@ -2412,11 +2583,16 @@ class NovxFile(File):
             self.MINOR_VERSION,
         )
         try:
-            locale = xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+            locale = (
+                xmlRoot.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+            )
         except KeyError:
             pass
         else:
-            self.novel.languageCode, self.novel.countryCode = locale.split('-')
+            (
+                self.novel.languageCode,
+                self.novel.countryCode
+            ) = locale.split('-')
         self.novel.tree.reset()
         try:
             self._read_project_data(xmlRoot)
@@ -2428,7 +2604,7 @@ class NovxFile(File):
             self._read_project_notes(xmlRoot)
             self.adjust_section_types()
             self._read_word_count_log(xmlRoot)
-        except Exception as ex:
+        except ZeroDivisionError as ex:
             raise Error(f"{_('Corrupt project data')} ({str(ex)})")
         self._get_timestamp()
         self._keep_word_count()
@@ -2471,41 +2647,74 @@ class NovxFile(File):
             self.novel.chapters[chId].to_xml(xmlChapter)
             for scId in self.novel.tree.get_children(chId):
                 self.novel.sections[scId].to_xml(
-                    ET.SubElement(xmlChapter, 'SECTION', attrib={'id': scId}))
+                    ET.SubElement(
+                        xmlChapter,
+                        'SECTION',
+                        attrib={'id': scId},
+                    )
+                )
 
     def _build_characters(self, root):
         xmlCharacters = ET.SubElement(root, 'CHARACTERS')
         for crId in self.novel.tree.get_children(CR_ROOT):
             self.novel.characters[crId].to_xml(
-                ET.SubElement(xmlCharacters, 'CHARACTER', attrib={'id': crId}))
+                ET.SubElement(
+                    xmlCharacters,
+                    'CHARACTER',
+                    attrib={'id': crId},
+                )
+            )
 
     def _build_locations(self, root):
         xmlLocations = ET.SubElement(root, 'LOCATIONS')
         for lcId in self.novel.tree.get_children(LC_ROOT):
             self.novel.locations[lcId].to_xml(
-                ET.SubElement(xmlLocations, 'LOCATION', attrib={'id': lcId}))
+                ET.SubElement(
+                    xmlLocations,
+                    'LOCATION',
+                    attrib={'id': lcId},
+                )
+            )
 
     def _build_items(self, root):
         xmlItems = ET.SubElement(root, 'ITEMS')
         for itId in self.novel.tree.get_children(IT_ROOT):
             self.novel.items[itId].to_xml(
-                ET.SubElement(xmlItems, 'ITEM', attrib={'id': itId}))
+                ET.SubElement(
+                    xmlItems,
+                    'ITEM',
+                    attrib={'id': itId},
+                )
+            )
 
     def _build_plot_lines_and_points(self, root):
         xmlPlotLines = ET.SubElement(root, 'ARCS')
         for plId in self.novel.tree.get_children(PL_ROOT):
             xmlPlotLine = ET.SubElement(
-                xmlPlotLines, 'ARC', attrib={'id': plId})
+                xmlPlotLines,
+                'ARC',
+                attrib={'id': plId},
+            )
             self.novel.plotLines[plId].to_xml(xmlPlotLine)
             for ppId in self.novel.tree.get_children(plId):
                 self.novel.plotPoints[ppId].to_xml(
-                    ET.SubElement(xmlPlotLine, 'POINT', attrib={'id': ppId}))
+                    ET.SubElement(
+                        xmlPlotLine,
+                        'POINT',
+                        attrib={'id': ppId},
+                    )
+                )
 
     def _build_project_notes(self, root):
         xmlProjectNotes = ET.SubElement(root, 'PROJECTNOTES')
         for pnId in self.novel.tree.get_children(PN_ROOT):
-            self.novel.projectNotes[pnId].to_xml(ET.SubElement(
-                xmlProjectNotes, 'PROJECTNOTE', attrib={'id': pnId}))
+            self.novel.projectNotes[pnId].to_xml(
+                ET.SubElement(
+                    xmlProjectNotes,
+                    'PROJECTNOTE',
+                    attrib={'id': pnId},
+                )
+            )
 
     def _build_word_count_log(self, root):
         if not self.wcLog:
@@ -2517,7 +2726,10 @@ class NovxFile(File):
         for wc in self.wcLog:
             wcCount, wcTotalCount = self.wcLog[wc]
             if self.novel.saveWordCount:
-                if wcCount == wcLastCount and wcTotalCount == wcLastTotalCount:
+                if (
+                    wcCount == wcLastCount
+                    and wcTotalCount == wcLastTotalCount
+                ):
                     continue
 
                 wcLastCount = wcCount
@@ -2548,7 +2760,10 @@ class NovxFile(File):
         latestDate = list(self.wcLog)[-1]
         latestCount = self.wcLog[latestDate][0]
         latestTotalCount = self.wcLog[latestDate][1]
-        if actualCount != latestCount or actualTotalCount != latestTotalCount:
+        if (
+            actualCount != latestCount
+            or actualTotalCount != latestTotalCount
+        ):
             try:
                 fileDateIso = date.fromtimestamp(self.timestamp).isoformat()
             except Exception:
@@ -2744,6 +2959,79 @@ class NovxFile(File):
             msg = f'{msg}: "{norm_path(xmlProject.filePath)}"'
             msg = f'{msg} - {str(ex)}'
             raise Error(msg)
+import zipfile
+
+
+
+class ZippedNovxOpener(NovxOpener):
+
+    NOVX_EXTENSIONS = [
+        '.novx',
+    ]
+    ZIP_EXTENSIONS = [
+        '.zip',
+    ]
+
+    @classmethod
+    def get_xml_root(cls, filePath, majorVersion, minorVersion):
+        __, extension = os.path.splitext(filePath)
+        try:
+            if not extension in cls.ZIP_EXTENSIONS:
+                raise Error('File type is not supported')
+
+            with zipfile.ZipFile(filePath, 'r') as z:
+                fileNames = z.namelist()
+                xmlRoot = None
+                for fileName in fileNames:
+                    __, extension = os.path.splitext(fileName)
+                    if extension in cls.NOVX_EXTENSIONS:
+                        with z.open(fileName, 'r') as f:
+                            xmlStr = f.read()
+                        xmlRoot = ET.fromstring(xmlStr)
+                        break
+
+                if xmlRoot is None:
+                    raise Error('File type is not supported')
+
+        except Exception as ex:
+            normPath = norm_path(filePath)
+            raise Error(
+                f'{_("Cannot process file")}: "{normPath}" - {str(ex)}'
+            )
+
+        if xmlRoot.tag != 'novx':
+            msg = _("No valid xml root element found in file")
+            raise Error(f'{msg}: "{norm_path(filePath)}".')
+
+        fileMajorVersion, fileMinorVersion = cls._get_file_version(
+            xmlRoot,
+            filePath,
+        )
+        fileMajorVersion, fileMinorVersion = cls._upgrade_file_version(
+            xmlRoot,
+            fileMajorVersion,
+            fileMinorVersion,
+        )
+        cls._check_version(
+            fileMajorVersion,
+            fileMinorVersion,
+            filePath,
+            majorVersion,
+            minorVersion,
+        )
+        return xmlRoot
+
+
+
+class ZippedNovxFile(NovxFile):
+
+    DESCRIPTION = _('Zipped novelibre project')
+    EXTENSION = '.zip'
+
+    fileOpener = ZippedNovxOpener
+
+    def write(self):
+        raise NotImplementedError
 from pathlib import Path
 
 
@@ -2751,6 +3039,7 @@ prefs = {}
 launchers = {}
 
 HOME_URL = 'https://github.com/peter88213/novelibre/'
+NEWS_URL = 'https://github.com/peter88213/novelibre/discussions/1?sort=new'
 
 HOME_DIR = str(Path.home()).replace('\\', '/')
 INSTALL_DIR = f'{HOME_DIR}/.novx'
@@ -2761,13 +3050,6 @@ USER_STYLES_DIR = f'{INSTALL_DIR}/styles'
 USER_STYLES_XML = f'{USER_STYLES_DIR}/styles.xml'
 
 NOT_ASSIGNED = ''
-
-
-def datestr(dateIso):
-    if prefs['localize_date']:
-        return PyCalendar.locale_date(dateIso)
-    else:
-        return dateIso
 
 
 def get_locale_date_str(isoDate):
@@ -2812,11 +3094,20 @@ def to_string(text):
 
 class NovxService:
 
+    def change_word_counter(self, wordCounter):
+        Section.wordCounter = wordCounter
+
     def get_novelibre_home_url(self):
         return HOME_URL
 
     def get_novx_file_extension(self):
         return NovxFile.EXTENSION
+
+    def get_word_counter(self):
+        return Section.wordCounter
+
+    def get_zipped_novx_file_extension(self):
+        return ZippedNovxFile.EXTENSION
 
     def new_basic_element(self, **kwargs):
         return BasicElement(**kwargs)
@@ -2830,6 +3121,9 @@ class NovxService:
     def new_novel(self, **kwargs):
         kwargs['tree'] = kwargs.get('tree', NvTree())
         return Novel(**kwargs)
+
+    def new_novx_file(self, filePath, **kwargs):
+        return NovxFile(filePath, **kwargs)
 
     def new_nv_tree(self, **kwargs):
         return NvTree(**kwargs)
@@ -2846,8 +3140,8 @@ class NovxService:
     def new_world_element(self, **kwargs):
         return WorldElement(**kwargs)
 
-    def new_novx_file(self, filePath, **kwargs):
-        return NovxFile(filePath, **kwargs)
+    def new_zipped_novx_file(self, filePath, **kwargs):
+        return ZippedNovxFile(filePath, **kwargs)
 
 
 
