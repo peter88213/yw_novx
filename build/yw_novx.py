@@ -201,8 +201,7 @@ class Chapter(BasicElementNotes):
         chType=None,
         noNumber=None,
         isTrash=None,
-        epigraph=None,
-        epigraphSrc=None,
+        hasEpigraph=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -210,8 +209,7 @@ class Chapter(BasicElementNotes):
         self._chType = chType
         self._noNumber = noNumber
         self._isTrash = isTrash
-        self._epigraph = epigraph
-        self._epigraphSrc = epigraphSrc
+        self._hasEpigraph = hasEpigraph
 
     @property
     def chLevel(self):
@@ -262,27 +260,15 @@ class Chapter(BasicElementNotes):
             self.on_element_change()
 
     @property
-    def epigraph(self):
-        return self._epigraph
+    def hasEpigraph(self):
+        return self._hasEpigraph
 
-    @epigraph.setter
-    def epigraph(self, newVal):
+    @hasEpigraph.setter
+    def hasEpigraph(self, newVal):
         if newVal is not None:
-            assert type(newVal) is str
-        if self._epigraph != newVal:
-            self._epigraph = newVal
-            self.on_element_change()
-
-    @property
-    def epigraphSrc(self):
-        return self._epigraphSrc
-
-    @epigraphSrc.setter
-    def epigraphSrc(self, newVal):
-        if newVal is not None:
-            assert type(newVal) is str
-        if self._epigraphSrc != newVal:
-            self._epigraphSrc = newVal
+            assert type(newVal) is bool
+        if self._hasEpigraph != newVal:
+            self._hasEpigraph = newVal
             self.on_element_change()
 
     def from_xml(self, xmlElement):
@@ -299,8 +285,7 @@ class Chapter(BasicElementNotes):
             self.chLevel = 2
         self.isTrash = xmlElement.get('isTrash', None) == '1'
         self.noNumber = xmlElement.get('noNumber', None) == '1'
-        self.epigraph = self._xml_element_to_text(xmlElement.find('Epigraph'))
-        self.epigraphSrc = self._get_element_text(xmlElement, 'EpigraphSrc')
+        self.hasEpigraph = xmlElement.get('hasEpigraph', None) == '1'
 
     def to_xml(self, xmlElement):
         super().to_xml(xmlElement)
@@ -312,12 +297,8 @@ class Chapter(BasicElementNotes):
             xmlElement.set('isTrash', '1')
         if self.noNumber:
             xmlElement.set('noNumber', '1')
-        if self.epigraph:
-            xmlElement.append(
-                self._text_to_xml_element('Epigraph', self.epigraph)
-            )
-        if self.epigraphSrc:
-            ET.SubElement(xmlElement, 'EpigraphSrc').text = self.epigraphSrc
+        if self.hasEpigraph:
+            xmlElement.set('hasEpigraph', '1')
 from calendar import isleap, day_name, month_name
 from datetime import date
 from datetime import datetime
@@ -854,7 +835,7 @@ class Character(WorldElement):
 import re
 
 
-LANGUAGE_TAG = re.compile(r'\<span xml\:lang=\"(.*?)\"\>')
+LANGUAGE_TAG = re.compile(r'\<(p|span) xml\:lang=\"(.*?)\".*?\>')
 
 
 class Novel(BasicElement):
@@ -1254,9 +1235,10 @@ class Novel(BasicElement):
             return
 
         try:
+            if len(self._countryCode) != 2:
+                self._countryCode = None
             if len(self._languageCode) == 2:
-                if len(self._countryCode) == 2:
-                    return
+                return
         except:
             pass
         self._languageCode = 'zxx'
@@ -1367,7 +1349,7 @@ class Novel(BasicElement):
             m = LANGUAGE_TAG.search(text)
             while m:
                 text = text[m.span()[1]:]
-                yield m.group(1)
+                yield m.group(2)
                 m = LANGUAGE_TAG.search(text)
 
         self.languages = []
@@ -2394,6 +2376,14 @@ class File(ABC):
 
 
 
+def new_id(elements, prefix=''):
+    i = 1
+    while f'{prefix}{i}' in elements:
+        i += 1
+    return f'{prefix}{i}'
+
+
+
 class NovxOpener:
 
     @classmethod
@@ -2460,6 +2450,9 @@ class NovxOpener:
         if fileMajorVersion == 1 and fileMinorVersion < 7:
             cls._upgrade_to_1_7(xmlRoot)
             fileMinorVersion = 7
+        if fileMajorVersion == 1 and fileMinorVersion < 8:
+            cls._upgrade_to_1_8(xmlRoot)
+            fileMinorVersion = 8
         return fileMajorVersion, fileMinorVersion
 
     @classmethod
@@ -2490,6 +2483,46 @@ class NovxOpener:
                         'Viewpoint',
                         attrib={'id':crId},
                     )
+
+    @classmethod
+    def _upgrade_to_1_8(cls, xmlRoot):
+        allSections = []
+
+        for xmlSection in xmlRoot.iter(tag='SECTION'):
+            allSections.append(xmlSection.attrib['id'])
+
+        xmlChapters = xmlRoot.find('CHAPTERS')
+        if xmlChapters is None:
+            return
+
+        for xmlChapter in xmlChapters.iterfind('CHAPTER'):
+            xmlEpigraph = xmlChapter.find('Epigraph')
+            xmlEpigraphSrc = xmlChapter.find('EpigraphSrc')
+            if xmlEpigraph is not None:
+                xmlChapter.remove(xmlEpigraph)
+
+                xmlChapter.set('hasEpigraph', '1')
+
+                xmlNewSection = ET.Element('SECTION')
+
+                newId = new_id(allSections, SECTION_PREFIX)
+                allSections.append(newId)
+                xmlNewSection.set('id', newId)
+
+                ET.SubElement(xmlNewSection, 'Title').text = _('Epigraph')
+
+                xmlNewSection.append(xmlEpigraph)
+                xmlEpigraph.tag = 'Content'
+
+                if xmlEpigraphSrc is not None:
+                    xmlChapter.remove(xmlEpigraphSrc)
+                    xmlNewSection.append(
+                        ET.fromstring(
+                           f'<Desc><p>{xmlEpigraphSrc.text}</p></Desc>'
+                        )
+                    )
+
+                xmlChapter.insert(0, xmlNewSection)
 
 
 
@@ -2522,7 +2555,7 @@ class NovxFile(File):
     EXTENSION = '.novx'
 
     MAJOR_VERSION = 1
-    MINOR_VERSION = 7
+    MINOR_VERSION = 8
 
     XML_HEADER = (
         f'<?xml version="1.0" encoding="utf-8"?>\n'
@@ -2584,10 +2617,12 @@ class NovxFile(File):
         except KeyError:
             pass
         else:
-            (
-                self.novel.languageCode,
-                self.novel.countryCode
-            ) = locale.split('-')
+            codes = locale.split('-')
+            self.novel.languageCode = codes[0]
+            try:
+                self.novel.countryCode = codes[1]
+            except IndexError:
+                self.novel.countryCode = None
         self.novel.tree.reset()
         try:
             self._read_project_data(xmlRoot)
@@ -2599,7 +2634,7 @@ class NovxFile(File):
             self._read_project_notes(xmlRoot)
             self.adjust_section_types()
             self._read_word_count_log(xmlRoot)
-        except ZeroDivisionError as ex:
+        except Exception as ex:
             raise Error(f"{_('Corrupt project data')} ({str(ex)})")
         self._get_timestamp()
         self._keep_word_count()
@@ -2609,9 +2644,13 @@ class NovxFile(File):
         self.adjust_section_types()
         self.novel.get_languages()
 
+        if self.novel.countryCode:
+            countryCode = f'-{self.novel.countryCode}'
+        else:
+            countryCode = ''
         attrib = {
             'version': f'{self.MAJOR_VERSION}.{self.MINOR_VERSION}',
-            'xml:lang': f'{self.novel.languageCode}-{self.novel.countryCode}',
+            'xml:lang': f'{self.novel.languageCode}{countryCode}',
         }
         xmlRoot = ET.Element('novx', attrib=attrib)
         self._build_project(xmlRoot)
